@@ -5,7 +5,7 @@ G7 H5流媒体处理库，包含实时视频，历史视频回放等。
 在封装flv.js hls.js等第三方开源H5播放库基础上根据G7平台接入设备特性做优化处理。
 
 ## Demo
-See [index.md](demo/index.md)
+See [index.md](demo/index.html)
 
 ## API and Configuration
 See [api.md](docs/api.md)
