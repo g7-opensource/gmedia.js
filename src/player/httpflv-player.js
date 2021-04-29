@@ -1,6 +1,6 @@
 import {GPlayerEvent, GErrorType, GPlaybackControlStatus} from "./gplayer-events.js"
 import {GPlayer} from "./gplayer.js"
-import flvjs from "flv.js";
+import flvjs from "flv-g7.js";
 
 const PlaybackKey = "g7-flv-video-playback";
 
@@ -52,7 +52,7 @@ export class HttpFlvPlayer extends GPlayer {
         this.player.on(flvjs.Events.STATISTICS_INFO, this._onStatisticsInfo.bind(this));
         this.player.on(flvjs.Events.ERROR, this._onError.bind(this));
         this.player.setMediaSourceEndCallback(this._onMediaSourceEnd.bind(this));
-        this.player.setTestCall(this._onStreamTime.bind(this));
+        this.player.setStreamTimeCallback(this._onStreamTime.bind(this));
     }
 
     on(event, call) {

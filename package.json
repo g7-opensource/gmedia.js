@@ -11,7 +11,7 @@
   "dependencies": {
     "es6-promise": "^4.2.5",
     "webworkify": "^1.5.0",
-    "flv.js": "1.5.0"
+    "flv-g7.js": "1.6.1"
   },
   "devDependencies": {
     "babel-preset-es2015": "^6.24.0",

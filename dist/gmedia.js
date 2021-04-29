@@ -2788,6 +2788,7 @@ var MSEController = function () {
 
                 if (pendingSegments[type].length > 0) {
                     var segment = pendingSegments[type].shift();
+
                     if (segment.timestampOffset) {
                         // For MPEG audio stream in MSE, if unbuffered-seeking occurred
                         // We need explicitly set timestampOffset to the desired point in timeline for mpeg SourceBuffer.
@@ -3048,7 +3049,7 @@ var Transmuxer = function () {
             ctl.on(_transmuxingEvents2.default.SCRIPTDATA_ARRIVED, this._onScriptDataArrived.bind(this));
             ctl.on(_transmuxingEvents2.default.STATISTICS_INFO, this._onStatisticsInfo.bind(this));
             ctl.on(_transmuxingEvents2.default.RECOMMEND_SEEKPOINT, this._onRecommendSeekpoint.bind(this));
-            ctl.on(_transmuxingEvents2.default.FRAME_INTERVAL, this._onFrameInterval.bind(this));
+            ctl.on(_transmuxingEvents2.default.STREAM_TIME, this._onStreamTime.bind(this));
         }
     }
 
@@ -3230,12 +3231,12 @@ var Transmuxer = function () {
             });
         }
     }, {
-        key: '_onFrameInterval',
-        value: function _onFrameInterval(ts) {
+        key: '_onStreamTime',
+        value: function _onStreamTime(time) {
             var _this12 = this;
 
             Promise.resolve().then(function () {
-                _this12._emitter.emit(_transmuxingEvents2.default.FRAME_INTERVAL, ts);
+                _this12._emitter.emit(_transmuxingEvents2.default.STREAM_TIME, time);
             });
         }
     }, {
@@ -3519,21 +3520,22 @@ var TransmuxingController = function () {
     }, {
         key: 'seek',
         value: function seek(milliseconds) {
-            this._pendingResolveSeekPoint = milliseconds;
-            /*
             if (this._mediaInfo == null || !this._mediaInfo.isSeekable()) {
                 return;
             }
-             let targetSegmentIndex = this._searchSegmentIndexContains(milliseconds);
-             if (targetSegmentIndex === this._currentSegmentIndex) {
+
+            var targetSegmentIndex = this._searchSegmentIndexContains(milliseconds);
+
+            if (targetSegmentIndex === this._currentSegmentIndex) {
                 // intra-segment seeking
-                let segmentInfo = this._mediaInfo.segments[targetSegmentIndex];
-                 if (segmentInfo == undefined) {
+                var segmentInfo = this._mediaInfo.segments[targetSegmentIndex];
+
+                if (segmentInfo == undefined) {
                     // current segment loading started, but mediainfo hasn't received yet
                     // wait for the metadata loaded, then seek to expected position
                     this._pendingSeekTime = milliseconds;
                 } else {
-                    let keyframe = segmentInfo.getNearestKeyframe(milliseconds);
+                    var keyframe = segmentInfo.getNearestKeyframe(milliseconds);
                     this._remuxer.seek(keyframe.milliseconds);
                     this._ioctl.seek(keyframe.fileposition);
                     // Will be resolved in _onRemuxerMediaSegmentArrival()
@@ -3541,8 +3543,9 @@ var TransmuxingController = function () {
                 }
             } else {
                 // cross-segment seeking
-                let targetSegmentInfo = this._mediaInfo.segments[targetSegmentIndex];
-                 if (targetSegmentInfo == undefined) {
+                var targetSegmentInfo = this._mediaInfo.segments[targetSegmentIndex];
+
+                if (targetSegmentInfo == undefined) {
                     // target segment hasn't been loaded. We need metadata then seek to expected time
                     this._pendingSeekTime = milliseconds;
                     this._internalAbort();
@@ -3552,18 +3555,18 @@ var TransmuxingController = function () {
                     // Here we wait for the metadata loaded, then seek to expected position
                 } else {
                     // We have target segment's metadata, direct seek to target position
-                    let keyframe = targetSegmentInfo.getNearestKeyframe(milliseconds);
+                    var _keyframe = targetSegmentInfo.getNearestKeyframe(milliseconds);
                     this._internalAbort();
                     this._remuxer.seek(milliseconds);
                     this._remuxer.insertDiscontinuity();
                     this._demuxer.resetMediaInfo();
                     this._demuxer.timestampBase = this._mediaDataSource.segments[targetSegmentIndex].timestampBase;
-                    this._loadSegment(targetSegmentIndex, keyframe.fileposition);
-                    this._pendingResolveSeekPoint = keyframe.milliseconds;
+                    this._loadSegment(targetSegmentIndex, _keyframe.fileposition);
+                    this._pendingResolveSeekPoint = _keyframe.milliseconds;
                     this._reportSegmentMediaInfo(targetSegmentIndex);
                 }
             }
-            */
+
             this._enableStatisticsReporter();
         }
     }, {
@@ -3619,7 +3622,7 @@ var TransmuxingController = function () {
                 this._demuxer.onMediaInfo = this._onMediaInfo.bind(this);
                 this._demuxer.onMetaDataArrived = this._onMetaDataArrived.bind(this);
                 this._demuxer.onScriptDataArrived = this._onScriptDataArrived.bind(this);
-                this._demuxer.onFrameInterval = this._onFrameInterval.bind(this);
+                this._demuxer.onStreamTime = this._onStreamTime.bind(this);
 
                 this._remuxer.bindDataSource(this._demuxer.bindDataSource(this._ioctl));
 
@@ -3680,9 +3683,9 @@ var TransmuxingController = function () {
             this._emitter.emit(_transmuxingEvents2.default.SCRIPTDATA_ARRIVED, data);
         }
     }, {
-        key: '_onFrameInterval',
-        value: function _onFrameInterval(ts) {
-            this._emitter.emit(_transmuxingEvents2.default.FRAME_INTERVAL, ts);
+        key: '_onStreamTime',
+        value: function _onStreamTime(time) {
+            this._emitter.emit(_transmuxingEvents2.default.STREAM_TIME, time);
         }
     }, {
         key: '_onIOSeeked',
@@ -3747,15 +3750,6 @@ var TransmuxingController = function () {
             if (this._pendingResolveSeekPoint != null && type === 'video') {
                 var syncPoints = mediaSegment.info.syncPoints;
                 var seekpoint = this._pendingResolveSeekPoint;
-
-                if (mediaSegment.info.syncPoints.length == 0) {
-                    return;
-                }
-
-                if (Math.abs(syncPoints[0].originalDts - seekpoint) > 1000) {
-                    return;
-                }
-                seekpoint = syncPoints[0].pts;
                 this._pendingResolveSeekPoint = null;
 
                 // Safari: Pass PTS for recommend_seekpoint
@@ -3763,9 +3757,7 @@ var TransmuxingController = function () {
                     seekpoint = syncPoints[0].pts;
                 }
                 // else: use original DTS (keyframe.milliseconds)
-                // setTimeout(() => {
-                //     this._emitter.emit(TransmuxingEvents.RECOMMEND_SEEKPOINT, seekpoint);
-                // }, 500);
+
                 this._emitter.emit(_transmuxingEvents2.default.RECOMMEND_SEEKPOINT, seekpoint);
             }
         }
@@ -3858,7 +3850,7 @@ var TransmuxingEvents = {
   SCRIPTDATA_ARRIVED: 'scriptdata_arrived',
   STATISTICS_INFO: 'statistics_info',
   RECOMMEND_SEEKPOINT: 'recommend_seekpoint',
-  FRAME_INTERVAL: 'frame_interval'
+  STREAM_TIME: 'stream_time'
 };
 
 exports.default = TransmuxingEvents;
@@ -4600,14 +4592,6 @@ var _mediaInfo2 = _interopRequireDefault(_mediaInfo);
 
 var _exception = _dereq_('../utils/exception.js');
 
-var _mseEvents = _dereq_('../core/mse-events.js');
-
-var _mseEvents2 = _interopRequireDefault(_mseEvents);
-
-var _events = _dereq_('events');
-
-var _events2 = _interopRequireDefault(_events);
-
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -4631,7 +4615,6 @@ var FLVDemuxer = function () {
         this.TAG = 'FLVDemuxer';
 
         this._config = config;
-        this._emitter = new _events2.default();
 
         this._onError = null;
         this._onMediaInfo = null;
@@ -4639,7 +4622,7 @@ var FLVDemuxer = function () {
         this._onScriptDataArrived = null;
         this._onTrackMetadata = null;
         this._onDataAvailable = null;
-        this._onFrameInterval = null;
+        this._onStreamTime = null;
 
         this._dataOffset = probeData.dataOffset;
         this._firstParse = true;
@@ -4693,11 +4676,6 @@ var FLVDemuxer = function () {
             new DataView(buf).setInt16(0, 256, true); // little-endian write
             return new Int16Array(buf)[0] === 256; // platform-spec read, if equal then LE
         }();
-
-        this._lastFrameTs = 0;
-
-        this.AudioCnt = 0;
-        this.VideoCnt = 0;
     }
 
     _createClass(FLVDemuxer, [{
@@ -4716,7 +4694,7 @@ var FLVDemuxer = function () {
             this._onScriptDataArrived = null;
             this._onTrackMetadata = null;
             this._onDataAvailable = null;
-            this._onFrameInterval = null;
+            this._onStreamTime = null;
         }
     }, {
         key: 'bindDataSource',
@@ -4829,30 +4807,15 @@ var FLVDemuxer = function () {
                 switch (tagType) {
                     case 8:
                         // Audio
-                        // if (this.AudioCnt % 10 == 0) {
-                        //     console.log('receive audio cnt:' + this.AudioCnt + 'ts: ' + timestamp);
-                        // }
-                        // this.AudioCnt += 1;
                         this._parseAudioData(chunk, dataOffset, dataSize, timestamp);
                         break;
                     case 9:
-                        {
-                            // Video
-                            // if (this.VideoCnt % 10 == 0) {
-                            //     console.log('receive video cnt:' + this.VideoCnt + 'ts: ' + timestamp);
-                            // }
-                            // this.VideoCnt += 1;
-
-                            var offFrameTs = timestamp - this._lastFrameTs;
-                            this._lastFrameTs = timestamp;
-                            //console.log(timestamp - this._lastFrameTs);
-                            if (this._onFrameInterval != null) {
-                                this._onFrameInterval(timestamp);
-                            }
-
-                            this._parseVideoData(chunk, dataOffset, dataSize, timestamp, byteStart + offset);
-                            break;
+                        // Video
+                        if (this._onStreamTime != null) {
+                            this._onStreamTime(timestamp);
                         }
+                        this._parseVideoData(chunk, dataOffset, dataSize, timestamp, byteStart + offset);
+                        break;
                     case 18:
                         // ScriptDataObject
                         this._parseScriptData(chunk, dataOffset, dataSize);
@@ -5700,12 +5663,12 @@ var FLVDemuxer = function () {
             this._onDataAvailable = callback;
         }
     }, {
-        key: 'onFrameInterval',
+        key: 'onStreamTime',
         get: function get() {
-            return this._onFrameInterval;
+            return this._onStreamTime;
         },
         set: function set(callback) {
-            this._onFrameInterval = callback;
+            this._onStreamTime = callback;
         }
 
         // timestamp base for output samples, must be in milliseconds
@@ -5785,7 +5748,7 @@ var FLVDemuxer = function () {
 
 exports.default = FLVDemuxer;
 
-},{"../core/media-info.js":7,"../core/mse-events.js":10,"../utils/exception.js":40,"../utils/logger.js":41,"./amf-parser.js":15,"./demux-errors.js":16,"./sps-parser.js":19,"events":2}],19:[function(_dereq_,module,exports){
+},{"../core/media-info.js":7,"../utils/exception.js":40,"../utils/logger.js":41,"./amf-parser.js":15,"./demux-errors.js":16,"./sps-parser.js":19}],19:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -6216,7 +6179,7 @@ Object.defineProperty(flvjs, 'version', {
     enumerable: true,
     get: function get() {
         // replaced by browserify-versionify transform
-        return '1.5.0';
+        return '1.6.0';
     }
 });
 
@@ -6388,11 +6351,17 @@ var FetchStreamLoader = function (_BaseLoader) {
                 params.referrerPolicy = dataSource.referrerPolicy;
             }
 
+            // add abort controller, by wmlgl 2019-5-10 12:21:27
+            if (self.AbortController) {
+                this._abortController = new self.AbortController();
+                params.signal = this._abortController.signal;
+            }
+
             this._status = _loader.LoaderStatus.kConnecting;
             self.fetch(seekConfig.url, params).then(function (res) {
                 if (_this2._requestAbort) {
-                    _this2._requestAbort = false;
                     _this2._status = _loader.LoaderStatus.kIdle;
+                    res.body.cancel();
                     return;
                 }
                 if (res.ok && res.status >= 200 && res.status <= 299) {
@@ -6423,6 +6392,10 @@ var FetchStreamLoader = function (_BaseLoader) {
                     }
                 }
             }).catch(function (e) {
+                if (_this2._abortController && _this2._abortController.signal.aborted) {
+                    return;
+                }
+
                 _this2._status = _loader.LoaderStatus.kError;
                 if (_this2._onError) {
                     _this2._onError(_loader.LoaderErrors.EXCEPTION, { code: -1, msg: e.message });
@@ -6435,6 +6408,17 @@ var FetchStreamLoader = function (_BaseLoader) {
         key: 'abort',
         value: function abort() {
             this._requestAbort = true;
+
+            if (this._status !== _loader.LoaderStatus.kBuffering || !_browser2.default.chrome) {
+                // Chrome may throw Exception-like things here, avoid using if is buffering
+                if (this._abortController) {
+                    try {
+                        this._abortController.abort();
+                    } catch (e) {
+                        return;
+                    }
+                }
+            }
         }
     }, {
         key: '_pump',
@@ -6463,8 +6447,10 @@ var FetchStreamLoader = function (_BaseLoader) {
                         }
                     }
                 } else {
-                    if (_this3._requestAbort === true) {
-                        _this3._requestAbort = false;
+                    if (_this3._abortController && _this3._abortController.signal.aborted) {
+                        _this3._status = _loader.LoaderStatus.kComplete;
+                        return;
+                    } else if (_this3._requestAbort === true) {
                         _this3._status = _loader.LoaderStatus.kComplete;
                         return reader.cancel();
                     }
@@ -6482,6 +6468,11 @@ var FetchStreamLoader = function (_BaseLoader) {
                     _this3._pump(reader);
                 }
             }).catch(function (e) {
+                if (_this3._abortController && _this3._abortController.signal.aborted) {
+                    _this3._status = _loader.LoaderStatus.kComplete;
+                    return;
+                }
+
                 if (e.code === 11 && _browser2.default.msedge) {
                     // InvalidStateError on Microsoft Edge
                     // Workaround: Edge may throw InvalidStateError after ReadableStreamReader.cancel() call
@@ -9054,27 +9045,8 @@ var FlvPlayer = function () {
             this._config.accurateSeek = false;
         }
 
+        this.callbackStreamTime = null;
         this._mediaSourceEndCallback = null;
-        /***************计算历史视频回放当前播放时间*****************/
-        this._playTimeCallback = null;
-        this._controlMsgCallback = null;
-
-        this._startTs = 0;
-        this._forward = true;
-        this._speed = 1;
-
-        this._lastAverageFrameInterval = 0;
-        this._LIST_FRAME_SIZE = 10;
-        this._listFrameInterval = [];
-        this._readyChange = false;
-        this._readySeek = false;
-        this._newSpeed = 1;
-        this._newForward = true;
-        this._ratio = 1; //系数
-        this._threshol = 1; //阈值
-        this._lastReceiveCmdTs = 1;
-
-        this.TestCall = null;
     }
 
     _createClass(FlvPlayer, [{
@@ -9096,24 +9068,8 @@ var FlvPlayer = function () {
             this._emitter.removeAllListeners();
             this._emitter = null;
 
+            this.callbackStreamTime = null;
             this._mediaSourceEndCallback = null;
-            /***************计算历史视频回放当前播放时间*****************/
-            this._playTimeCallback = null;
-            this._controlMsgCallback = null;
-
-            this._startTs = 0;
-            this._forward = true;
-            this._speed = 1;
-
-            this._lastAverageFrameInterval = 0;
-            this._listFrameInterval = [];
-            this._readyChange = false;
-            this._readySeek = false;
-            this._newSpeed = 1;
-            this._newForward = true;
-            this._ratio = 1; //系数
-            this._threshol = 1; //阈值
-            this._lastReceiveCmdTs = 1;
         }
     }, {
         key: 'on',
@@ -9147,10 +9103,10 @@ var FlvPlayer = function () {
 
             this._mediaElement = mediaElement;
             mediaElement.addEventListener('loadedmetadata', this.e.onvLoadedMetadata);
-            // mediaElement.addEventListener('seeking', this.e.onvSeeking);
+            //mediaElement.addEventListener('seeking', this.e.onvSeeking);
             mediaElement.addEventListener('canplay', this.e.onvCanPlay);
             mediaElement.addEventListener('stalled', this.e.onvStalled);
-            // mediaElement.addEventListener('progress', this.e.onvProgress);
+            //mediaElement.addEventListener('progress', this.e.onvProgress);
 
             this._msectl = new _mseController2.default(this._config);
 
@@ -9193,7 +9149,7 @@ var FlvPlayer = function () {
                 //this._mediaElement.removeEventListener('seeking', this.e.onvSeeking);
                 this._mediaElement.removeEventListener('canplay', this.e.onvCanPlay);
                 this._mediaElement.removeEventListener('stalled', this.e.onvStalled);
-                // this._mediaElement.removeEventListener('progress', this.e.onvProgress);
+                //this._mediaElement.removeEventListener('progress', this.e.onvProgress);
                 this._mediaElement = null;
             }
             if (this._msectl) {
@@ -9276,14 +9232,11 @@ var FlvPlayer = function () {
             this._transmuxer.on(_transmuxingEvents2.default.RECOMMEND_SEEKPOINT, function (milliseconds) {
                 if (_this3._mediaElement && !_this3._config.accurateSeek) {
                     _this3._requestSetTime = true;
-                    console.log('跳转生效=> ' + (milliseconds / 1000 + 1));
                     _this3._mediaElement.currentTime = milliseconds / 1000;
                 }
             });
-
-            this._transmuxer.on(_transmuxingEvents2.default.FRAME_INTERVAL, function (ts) {
-                // console.log('============' + ts);
-                _this3._receiveFrameInterval(ts);
+            this._transmuxer.on(_transmuxingEvents2.default.STREAM_TIME, function (ts) {
+                _this3._receiveStreamTime(ts);
             });
 
             this._transmuxer.open();
@@ -9597,194 +9550,21 @@ var FlvPlayer = function () {
         value: function _onvProgress(e) {
             this._checkAndResumeStuckPlayback();
         }
-
-        /**********设置获取MediaSource onSourceEnded事件************/
-
     }, {
         key: 'setMediaSourceEndCallback',
         value: function setMediaSourceEndCallback(call) {
             this._mediaSourceEndCallback = call;
         }
-
-        /***************计算历史视频回放当前播放时间*****************/
-
     }, {
-        key: 'startReckonPlaybackTime',
-        value: function startReckonPlaybackTime(nStartTs, tsCall, msgCall) {
-            this._startTs = nStartTs;
-            this._playTimeCallback = tsCall;
-            this._controlMsgCallback = msgCall;
+        key: 'setStreamTimeCallback',
+        value: function setStreamTimeCallback(call) {
+            this.callbackStreamTime = call;
         }
     }, {
-        key: 'setPlaybackSpeed',
-        value: function setPlaybackSpeed(bForward, nSpeed) {
-            if (this._readyChange || this._readySeek) {
-                return false;
-            }
-            if (this._forward == bForward && this._speed == nSpeed) {
-                return false;
-            }
-
-            this._lastReceiveCmdTs = new Date().getTime();
-            if (bForward) {
-                this._goForward(nSpeed);
-            } else {
-                this._goReverse(nSpeed);
-            }
-
-            return true;
-        }
-    }, {
-        key: 'setPlaybackSeekTime',
-        value: function setPlaybackSeekTime(ts) {
-            var _this4 = this;
-
-            if (this._readyChange || this._readySeek) {
-                return false;
-            }
-
-            this._readySeek = true;
-            setTimeout(function () {
-                _this4._startTs = ts;
-                _this4._readySeek = false;
-                if (_this4._controlMsgCallback != null) {
-                    _this4._controlMsgCallback(1, '控制生效');
-                }
-            }, 1000);
-
-            return true;
-        }
-    }, {
-        key: '_goForward',
-        value: function _goForward(speed) {
-            this._newSpeed = speed;
-            this._newForward = true;
-
-            if (this._forward) {
-                //如果改变前是快进
-                this._ratio = this._speed / this._newSpeed;
-                this._threshol = this._lastAverageFrameInterval * this._ratio;
-                if (this._ratio > 1) {
-                    //如果间隔是将要增加
-                    this._threshol -= 5;
-                } else if (this._ratio < 1) {
-                    this._threshol += 5;
-                }
-            } else {
-                //如果改变前是快退
-                this._ratio = 0.5;
-                this._threshol = this._lastAverageFrameInterval * this._ratio;
-            }
-
-            this._readyChange = true; //这个变量最好最后赋值
-        }
-    }, {
-        key: '_goReverse',
-        value: function _goReverse(speed) {
-            this._newSpeed = speed;
-            this._newForward = false;
-
-            if (this._forward) {
-                //如果改变前是快进
-                this._ratio = 2;
-                this._threshol = this._lastAverageFrameInterval * this._ratio;
-            } else {
-                //如果改变前是快退
-                this._ratio = this._speed / this._newSpeed;
-                if (this._ratio > 1) {
-                    //如果间隔是将要增加
-                    this._threshol -= 5;
-                } else if (this._ratio < 1) {
-                    this._threshol += 5;
-                }
-            }
-
-            this._readyChange = true; //这个变量最好最后赋值
-        }
-    }, {
-        key: 'setTestCall',
-        value: function setTestCall(call) {
-            this.TestCall = call;
-        }
-    }, {
-        key: '_receiveFrameInterval',
-        value: function _receiveFrameInterval(ts) {
-            this.TestCall(ts);
-            // this._lastAverageFrameInterval = this._averageFrameInterval(ts); //计算最新几帧的平均时间间隔
-            // this._reckonChange();
-            // if (this._forward) {
-            //     this._startTs = this._startTs + ts * this._speed;
-            // }
-            // else {
-            //     this._startTs = this._startTs - ts * this._speed;
-            // }
-            // if (this._playTimeCallback != null) {
-            //     this._playTimeCallback(this._startTs);
-            // }
-        }
-    }, {
-        key: '_averageFrameInterval',
-        value: function _averageFrameInterval(ts) {
-            var newLen = this._listFrameInterval.push(ts);
-            if (newLen > this._LIST_FRAME_SIZE) {
-                this._listFrameInterval.shift();
-            }
-            return eval(this._listFrameInterval.join('+')) / this._listFrameInterval.length;
-        }
-    }, {
-        key: '_reckonChange',
-        value: function _reckonChange() {
-            if (!this._readyChange) {
-                //没有改变倍速就跳过
-                return;
-            }
-
-            var bSuccess = false;
-            if (this._ratio > 1) {
-                //时间间隔应该增加
-                if (this._lastAverageFrameInterval > this._threshol) {
-                    bSuccess = true;
-                }
-            } else if (this._ratio < 1) {
-                //时间间隔应该减小
-                if (this._lastAverageFrameInterval < this._threshol) {
-                    bSuccess = true;
-                }
-            }
-
-            if (bSuccess) {
-                //倍速改变生效
-                this._fixCacheTime();
-                this._forward = this._newForward;
-                this._speed = this._newSpeed;
-
-                this._readyChange = false;
-                if (this._controlMsgCallback != null) {
-                    this._controlMsgCallback(1, '控制命令生效');
-                }
-                return;
-            } else {
-                var nowts = new Date().getTime();
-                if (nowts - this._lastReceiveCmdTs > 15 * 1000) {
-                    this._readyChange = false;
-                    if (this._controlMsgCallback != null) {
-                        this._controlMsgCallback(0, '控制命令超过15秒未生效');
-                    }
-                }
-            }
-        }
-    }, {
-        key: '_fixCacheTime',
-        value: function _fixCacheTime() {
-            var ts = eval(this._listFrameInterval.join('+'));
-            if (this._forward == this._newForward) {
-                if (this._ratio < 1) {
-                    //提速补偿缓存带来少计算的
-                    this._startTs = this._startTs + ts * (1 / this._ratio);
-                } else {
-                    //降速还原多计算的
-                    this._startTs = this._startTs - ts * this._ratio;
-                }
+        key: '_receiveStreamTime',
+        value: function _receiveStreamTime(ts) {
+            if (this.callbackStreamTime != null) {
+                this.callbackStreamTime(ts);
             }
         }
     }, {
@@ -11199,92 +10979,103 @@ var MP4Remuxer = function () {
                 var _sample = samples[i];
                 var unit = _sample.unit;
                 var originalDts = _sample.dts - this._dtsBase;
-                var _dts = originalDts - dtsCorrection;
+                var _dts = originalDts;
+                var needFillSilentFrames = false;
+                var silentFrames = null;
+                var sampleDuration = 0;
+
+                if (originalDts < -0.001) {
+                    continue; //pass the first sample with the invalid dts
+                }
+
+                if (this._audioMeta.codec !== 'mp3') {
+                    // for AAC codec, we need to keep dts increase based on refSampleDuration
+                    var curRefDts = originalDts;
+                    var maxAudioFramesDrift = 3;
+                    if (this._audioNextDts) {
+                        curRefDts = this._audioNextDts;
+                    }
+
+                    dtsCorrection = originalDts - curRefDts;
+                    if (dtsCorrection <= -maxAudioFramesDrift * refSampleDuration) {
+                        // If we're overlapping by more than maxAudioFramesDrift number of frame, drop this sample
+                        _logger2.default.w(this.TAG, 'Dropping 1 audio frame (originalDts: ' + originalDts + ' ms ,curRefDts: ' + curRefDts + ' ms)  due to dtsCorrection: ' + dtsCorrection + ' ms overlap.');
+                        continue;
+                    } else if (dtsCorrection >= maxAudioFramesDrift * refSampleDuration && this._fillAudioTimestampGap && !_browser2.default.safari) {
+                        // Silent frame generation, if large timestamp gap detected && config.fixAudioTimestampGap
+                        needFillSilentFrames = true;
+                        // We need to insert silent frames to fill timestamp gap
+                        var frameCount = Math.floor(dtsCorrection / refSampleDuration);
+                        _logger2.default.w(this.TAG, 'Large audio timestamp gap detected, may cause AV sync to drift. ' + 'Silent frames will be generated to avoid unsync.\n' + ('originalDts: ' + originalDts + ' ms, curRefDts: ' + curRefDts + ' ms, ') + ('dtsCorrection: ' + Math.round(dtsCorrection) + ' ms, generate: ' + frameCount + ' frames'));
+
+                        _dts = Math.floor(curRefDts);
+                        sampleDuration = Math.floor(curRefDts + refSampleDuration) - _dts;
+
+                        var _silentUnit = _aacSilent2.default.getSilentFrame(this._audioMeta.originalCodec, this._audioMeta.channelCount);
+                        if (_silentUnit == null) {
+                            _logger2.default.w(this.TAG, 'Unable to generate silent frame for ' + (this._audioMeta.originalCodec + ' with ' + this._audioMeta.channelCount + ' channels, repeat last frame'));
+                            // Repeat last frame
+                            _silentUnit = unit;
+                        }
+                        silentFrames = [];
+
+                        for (var j = 0; j < frameCount; j++) {
+                            curRefDts = curRefDts + refSampleDuration;
+                            var intDts = Math.floor(curRefDts); // change to integer
+                            var intDuration = Math.floor(curRefDts + refSampleDuration) - intDts;
+                            var frame = {
+                                dts: intDts,
+                                pts: intDts,
+                                cts: 0,
+                                unit: _silentUnit,
+                                size: _silentUnit.byteLength,
+                                duration: intDuration, // wait for next sample
+                                originalDts: originalDts,
+                                flags: {
+                                    isLeading: 0,
+                                    dependsOn: 1,
+                                    isDependedOn: 0,
+                                    hasRedundancy: 0
+                                }
+                            };
+                            silentFrames.push(frame);
+                            mdatBytes += frame.size;
+                        }
+
+                        this._audioNextDts = curRefDts + refSampleDuration;
+                    } else {
+
+                        _dts = Math.floor(curRefDts);
+                        sampleDuration = Math.floor(curRefDts + refSampleDuration) - _dts;
+                        this._audioNextDts = curRefDts + refSampleDuration;
+                    }
+                } else {
+                    // keep the original dts calculate algorithm for mp3
+                    _dts = originalDts - dtsCorrection;
+
+                    if (i !== samples.length - 1) {
+                        var nextDts = samples[i + 1].dts - this._dtsBase - dtsCorrection;
+                        sampleDuration = nextDts - _dts;
+                    } else {
+                        // the last sample
+                        if (lastSample != null) {
+                            // use stashed sample's dts to calculate sample duration
+                            var _nextDts = lastSample.dts - this._dtsBase - dtsCorrection;
+                            sampleDuration = _nextDts - _dts;
+                        } else if (mp4Samples.length >= 1) {
+                            // use second last sample duration
+                            sampleDuration = mp4Samples[mp4Samples.length - 1].duration;
+                        } else {
+                            // the only one sample, use reference sample duration
+                            sampleDuration = Math.floor(refSampleDuration);
+                        }
+                    }
+                    this._audioNextDts = _dts + sampleDuration;
+                }
 
                 if (firstDts === -1) {
                     firstDts = _dts;
                 }
-
-                var sampleDuration = 0;
-
-                if (i !== samples.length - 1) {
-                    var nextDts = samples[i + 1].dts - this._dtsBase - dtsCorrection;
-                    sampleDuration = nextDts - _dts;
-                } else {
-                    // the last sample
-                    if (lastSample != null) {
-                        // use stashed sample's dts to calculate sample duration
-                        var _nextDts = lastSample.dts - this._dtsBase - dtsCorrection;
-                        sampleDuration = _nextDts - _dts;
-                    } else if (mp4Samples.length >= 1) {
-                        // use second last sample duration
-                        sampleDuration = mp4Samples[mp4Samples.length - 1].duration;
-                    } else {
-                        // the only one sample, use reference sample duration
-                        sampleDuration = Math.floor(refSampleDuration);
-                    }
-                }
-
-                var needFillSilentFrames = false;
-                var silentFrames = null;
-
-                // Silent frame generation, if large timestamp gap detected && config.fixAudioTimestampGap
-                if (sampleDuration > refSampleDuration * 1.5 && this._audioMeta.codec !== 'mp3' && this._fillAudioTimestampGap && !_browser2.default.safari) {
-                    // We need to insert silent frames to fill timestamp gap
-                    needFillSilentFrames = true;
-                    var delta = Math.abs(sampleDuration - refSampleDuration);
-                    var frameCount = Math.ceil(delta / refSampleDuration);
-                    var currentDts = _dts + refSampleDuration; // Notice: in float
-
-                    _logger2.default.w(this.TAG, 'Large audio timestamp gap detected, may cause AV sync to drift. ' + 'Silent frames will be generated to avoid unsync.\n' + ('dts: ' + (_dts + sampleDuration) + ' ms, expected: ' + (_dts + Math.round(refSampleDuration)) + ' ms, ') + ('delta: ' + Math.round(delta) + ' ms, generate: ' + frameCount + ' frames'));
-
-                    var _silentUnit = _aacSilent2.default.getSilentFrame(this._audioMeta.originalCodec, this._audioMeta.channelCount);
-                    if (_silentUnit == null) {
-                        _logger2.default.w(this.TAG, 'Unable to generate silent frame for ' + (this._audioMeta.originalCodec + ' with ' + this._audioMeta.channelCount + ' channels, repeat last frame'));
-                        // Repeat last frame
-                        _silentUnit = unit;
-                    }
-                    silentFrames = [];
-
-                    for (var j = 0; j < frameCount; j++) {
-                        var intDts = Math.round(currentDts); // round to integer
-                        if (silentFrames.length > 0) {
-                            // Set previous frame sample duration
-                            var previousFrame = silentFrames[silentFrames.length - 1];
-                            previousFrame.duration = intDts - previousFrame.dts;
-                        }
-                        var frame = {
-                            dts: intDts,
-                            pts: intDts,
-                            cts: 0,
-                            unit: _silentUnit,
-                            size: _silentUnit.byteLength,
-                            duration: 0, // wait for next sample
-                            originalDts: originalDts,
-                            flags: {
-                                isLeading: 0,
-                                dependsOn: 1,
-                                isDependedOn: 0,
-                                hasRedundancy: 0
-                            }
-                        };
-                        silentFrames.push(frame);
-                        mdatBytes += frame.size;
-                        currentDts += refSampleDuration;
-                    }
-
-                    // last frame: align end time to next frame dts
-                    var lastFrame = silentFrames[silentFrames.length - 1];
-                    lastFrame.duration = _dts + sampleDuration - lastFrame.dts;
-
-                    // silentFrames.forEach((frame) => {
-                    //     Log.w(this.TAG, `SilentAudio: dts: ${frame.dts}, duration: ${frame.duration}`);
-                    // });
-
-                    // Set correct sample duration for current frame
-                    sampleDuration = Math.round(refSampleDuration);
-                }
-
                 mp4Samples.push({
                     dts: _dts,
                     pts: _dts,
@@ -11305,6 +11096,13 @@ var MP4Remuxer = function () {
                     // Silent frames should be inserted after wrong-duration frame
                     mp4Samples.push.apply(mp4Samples, silentFrames);
                 }
+            }
+
+            if (mp4Samples.length === 0) {
+                //no samples need to remux
+                track.samples = [];
+                track.length = 0;
+                return;
             }
 
             // allocate mdatbox
@@ -11332,7 +11130,7 @@ var MP4Remuxer = function () {
 
             var latest = mp4Samples[mp4Samples.length - 1];
             lastDts = latest.dts + latest.duration;
-            this._audioNextDts = lastDts;
+            //this._audioNextDts = lastDts;
 
             // fill media segment info & add to info list
             var info = new _mediaSegmentInfo.MediaSegmentInfo();
@@ -12502,9 +12300,9 @@ var _gplayerEvents = _dereq_("./gplayer-events.js");
 
 var _gplayer = _dereq_("./gplayer.js");
 
-var _flv = _dereq_("flv.js");
+var _flvG = _dereq_("flv-g7.js");
 
-var _flv2 = _interopRequireDefault(_flv);
+var _flvG2 = _interopRequireDefault(_flvG);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -12562,16 +12360,16 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
         value: function init(url) {
             this.isLive = this._isLive(url);
             this.playbackControl = this._checkPlaybackControl(url);
-            this.player = _flv2.default.createPlayer({ isLive: this.isLive, type: 'flv', url: url }, {
+            this.player = _flvG2.default.createPlayer({ isLive: this.isLive, type: 'flv', url: url }, {
                 lazyLoad: false,
                 enableStashBuffer: false,
                 deferLoadAfterSourceOpen: true
             });
 
-            this.player.on(_flv2.default.Events.STATISTICS_INFO, this._onStatisticsInfo.bind(this));
-            this.player.on(_flv2.default.Events.ERROR, this._onError.bind(this));
+            this.player.on(_flvG2.default.Events.STATISTICS_INFO, this._onStatisticsInfo.bind(this));
+            this.player.on(_flvG2.default.Events.ERROR, this._onError.bind(this));
             this.player.setMediaSourceEndCallback(this._onMediaSourceEnd.bind(this));
-            this.player.setTestCall(this._onStreamTime.bind(this));
+            this.player.setStreamTimeCallback(this._onStreamTime.bind(this));
         }
     }, {
         key: "on",
@@ -12807,7 +12605,7 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
     return HttpFlvPlayer;
 }(_gplayer.GPlayer);
 
-},{"./gplayer-events.js":4,"./gplayer.js":5,"flv.js":1}]},{},[3])(3)
+},{"./gplayer-events.js":4,"./gplayer.js":5,"flv-g7.js":1}]},{},[3])(3)
 });
 
 //# sourceMappingURL=gmedia.js.map
