@@ -1,0 +1,38 @@
+{
+  "name": "gmedia",
+  "version": "1.0.0",
+  "description": "g7 h5 player",
+  "main": "./dist/gmedia.js",
+  "module": "./src/gmedia.js",
+  "scripts": {
+    "test": "gulp watch",
+    "build": "gulp release"
+  },
+  "dependencies": {
+    "es6-promise": "^4.2.5",
+    "webworkify": "^1.5.0",
+    "flv.js": "1.5.0"
+  },
+  "devDependencies": {
+    "babel-preset-es2015": "^6.24.0",
+    "babelify": "^7.3.0",
+    "browser-sync": "^2.26.3",
+    "browserify": "^13.1.1",
+    "browserify-derequire": "^0.9.6",
+    "browserify-versionify": "^1.0.6",
+    "del": "^2.2.0",
+    "gulp": "^3.9.1",
+    "gulp-cli": "^1.4.0",
+    "gulp-eslint": "^3.0.1",
+    "gulp-header": "^1.8.12",
+    "gulp-rename": "^1.4.0",
+    "gulp-sourcemaps": "^2.6.4",
+    "gulp-uglify": "^2.1.1",
+    "opn": "^5.4.0",
+    "vinyl-buffer": "^1.0.1",
+    "vinyl-source-stream": "^1.1.2",
+    "watchify": "^3.11.0"
+  },
+  "author": "mour",
+  "license": "ISC"
+}

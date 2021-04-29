@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <title>gmediajs demo</title>
+    <link rel="stylesheet" type="text/css" href="demo.css" />
+</head>
+
+<body onload="onLoad()">
+    
+    <div class="mainContainer">
+        <div>
+            <div id="streamURL">
+                <div class="url-input">
+                    <label for="idImei">imei:</label>
+                    <input id="idImei" type="text" value="131064253103060" />
+                    <label for="idChannel">channel:</label>
+                    <input id="idChannel" type="text" value="1" />
+                    <label for="idStart">开始时间:</label>
+                    <input id="idStart" type="text" value="2021-04-26 10:20:00" />
+                    <label for="idEnd">结束时间:</label>
+                    <input id="idEnd" type="text" value="2021-04-26 10:35:00" />
+                </div>
+                <div class="options">
+                    <input type="checkbox" id="isLive" onchange="saveSettings()" />
+                    <label for="isLive">isLive</label>  
+                </div>
+            </div>
+        </div>
+
+        <div class="video-container">
+            <div>
+                <video name="videoElement" class="centeredVideo" controls autoplay>
+                    Your browser is too old which doesn't support HTML5 video.
+                </video>
+            </div>
+        </div>
+        <div class="controls">
+            <label for="idPlayTime">当前播放时间:</label>
+            <input id="idPlayTime" type="text" value="" />
+        </div>
+        <input type="range" class="controls" id="idRange" value= '0' min="0" max="100" 
+            onchange="onElRangeChange()" onmousedown="onElRangeMouseDown()" onmouseup="onElRangeMouseUp()">
+
+        <div class="controls">
+            <button onclick="onBtLoad()">Load</button>
+            <button onclick="onBtDestroy()">Destroy</button>
+            <button onclick="onBtPause()">暂停</button>
+            <button onclick="onBtResume()">恢复播放</button>
+            <input style="width:150px" type="text" name="seekpoint" value="2021-04-26 10:30:00"/>
+            <button onclick="onBtSeek()">跳转到</button>
+            <button onclick="fastForward2()">2倍速快进</button>
+            <button onclick="fastForward4()">4倍速快进</button>
+            <button onclick="nomorl()">正常速度</button>
+            <button onclick="fastReverse2()">2倍速快退</button>
+            <button onclick="fastReverse4()">4倍速快退</button>
+        </div>
+        <textarea name="logcatbox" class="logcatBox" rows="10" readonly></textarea>
+    </div>
+
+    <script src="./util.js"></script>
+    <script src="./network.js"></script>
+    <script src="../dist/gmedia.js"></script>
+
+    <script>
+        var element;
+        var player;
+        var nStart;
+        var nEnd;
+        var elRange;
+        var elPlayTime;
+        var isDroping = false; //是否正常拖动进度条
+
+        function onLoad() {
+            elRange = document.getElementById('idRange');
+            elPlayTime = document.getElementById('idPlayTime');
+        }
+
+        function onBtLoad() {
+            let imei = document.getElementById('idImei').value;
+            let channel = document.getElementById('idChannel').value;
+            let strStart = document.getElementById('idStart').value;
+            let strEnd = document.getElementById('idEnd').value;
+            nStart = new Date(strStart).getTime();
+            nEnd = new Date(strEnd).getTime();
+            getPlaybackUrl(imei, channel, strStart, strEnd,(requestUrl,bOk, data)=>{
+                let json = {};
+                if (!bOk || (json = JSON.parse(data)).data.lenght == 0)
+                {
+                    console.log("获取播放地址失败");
+                }
+                let url = json.data[0].flv_url;
+                if (player != null) {
+                    player.destroy();
+                    player = null;
+                }
+                element = document.getElementsByName('videoElement')[0];
+                player = gmediajs.createPlayer(url);
+                player.on(gmediajs.GPlayerEvent.TIMEUPDATE,(time)=>{
+                    if (isDroping) { 
+                        //如果正在拖拽进度条，暂时先不更新进度和时间
+                        //因为在鼠标down到鼠标up期间,如果range控件进度被改变，range控件onchange事件将不会触发
+                        return;
+                    }
+                    elRange.value = (time*1000 / (nEnd - nStart))*100;
+
+                    let nCurPlayTime = time*1000 + nStart;
+                    let strCurPlayTime = getYMDHMS(nCurPlayTime);
+                    elPlayTime.value = strCurPlayTime;
+                });
+                player.on(gmediajs.GPlayerEvent.PLAYBACK_CONTROL_EVENT,(status, detail)=>{
+                    console.log('status ' + status + ' ' + detail);
+                });
+                player.on(gmediajs.GPlayerEvent.ERROR,(type, subtype, detail)=>{
+                    console.log('error ' + type + ' ' + subtype + ' ' + detail);
+                });
+                player.on(gmediajs.GPlayerEvent.MEDIA_SOURCE_END,()=>{
+                    console.log('media_source_end ');
+                });
+                player.on(gmediajs.GPlayerEvent.STATISTICS_INFO,(info)=>{
+                    let speed = Number(info.speed)
+                    speed = Math.ceil(speed);
+                    console.log(speed+ 'kB/s');
+                });
+                player.attachMediaElement(element);
+                player.load();
+            });
+        }
+
+
+        function onBtResume() {
+            if (player == null) {
+                return;
+            }
+
+            let bRes = player.resume();
+            if(bRes) {//返回true才需要向后台发送回放控制命令
+                //恢复播放默认返回false
+            }
+        }
+
+        function onBtPause() {
+            if (player == null) {
+                return;
+            }
+
+            let bRes = player.pause();
+            if(bRes) {//返回true才需要向后台发送回放控制命令
+                //暂停播放默认返回false
+            }
+        }
+
+        function onBtDestroy() {
+            if (player == null) {
+                return;
+            }
+
+            player.destroy();
+        }
+
+        function onBtSeek() {
+            let imei = document.getElementById('idImei').value;
+            let channel = document.getElementById('idChannel').value;
+            let strSeek = document.getElementsByName('seekpoint')[0].value;
+            let strStart = document.getElementById('idStart').value;
+            let dSeek = new Date(strSeek);
+            let dStart = new Date(strStart);
+            let nOff = dSeek.getTime() - dStart.getTime();          
+            nOff = nOff / 1000;
+
+            let bRes = player.seek(nOff);
+            if(bRes){//返回true才需要向后台发送回放控制命令
+                sendPlaybackControlCmdToServer(imei,channel,5,1,strSeek);
+            }
+        }
+
+        function onElRangeMouseDown() {
+            isDroping = true;
+            console.log("onElRangeMouseDown");
+        }
+
+        function onElRangeMouseUp() {
+            isDroping = false;
+            console.log("onElRangeMouseUp");
+        }
+
+        function onElRangeChange() {
+            let value = elRange.value ;
+            //value / 进度条最大值（进度条最小值必须为0）= 需要跳转到的时间 /（播放结束时间 - 播放开始时间）
+            let nOff = (value/100)*(nEnd-nStart); 
+            let strSeek = getYMDHMS(nStart + nOff);
+            nOff = nOff/1000;
+            console.log("准备跳转到:" + strSeek + "差值:" + nOff);
+
+            let imei = document.getElementById('idImei').value;
+            let channel = document.getElementById('idChannel').value;
+            let bRes = player.seek(nOff);
+            if(bRes) {//返回true才需要向后台发送回放控制命令
+                sendPlaybackControlCmdToServer(imei,channel,5,1,strSeek);
+            }
+        }
+
+
+      
+    </script>
+    
+</body>
+</html>
