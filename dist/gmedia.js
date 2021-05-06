@@ -6179,7 +6179,7 @@ Object.defineProperty(flvjs, 'version', {
     enumerable: true,
     get: function get() {
         // replaced by browserify-versionify transform
-        return '1.6.0';
+        return '1.6.1';
     }
 });
 
@@ -10999,7 +10999,7 @@ var MP4Remuxer = function () {
                     dtsCorrection = originalDts - curRefDts;
                     if (dtsCorrection <= -maxAudioFramesDrift * refSampleDuration) {
                         // If we're overlapping by more than maxAudioFramesDrift number of frame, drop this sample
-                        _logger2.default.w(this.TAG, 'Dropping 1 audio frame (originalDts: ' + originalDts + ' ms ,curRefDts: ' + curRefDts + ' ms)  due to dtsCorrection: ' + dtsCorrection + ' ms overlap.');
+                        //Log.w(this.TAG, `Dropping 1 audio frame (originalDts: ${originalDts} ms ,curRefDts: ${curRefDts} ms)  due to dtsCorrection: ${dtsCorrection} ms overlap.`);
                         continue;
                     } else if (dtsCorrection >= maxAudioFramesDrift * refSampleDuration && this._fillAudioTimestampGap && !_browser2.default.safari) {
                         // Silent frame generation, if large timestamp gap detected && config.fixAudioTimestampGap
@@ -12335,6 +12335,7 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
         _this.isLive = true;
         _this.playbackControl = PlaybackControl.None;
 
+        _this.streamEnd = false;
         _this.needSeek = false;
         _this.seeking = false;
         _this.seekTime = 0;
@@ -12365,6 +12366,7 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
                 enableStashBuffer: false,
                 deferLoadAfterSourceOpen: true
             });
+            //fixAudioTimestampGap:false 会导致播放音视频不同步无法播放
 
             this.player.on(_flvG2.default.Events.STATISTICS_INFO, this._onStatisticsInfo.bind(this));
             this.player.on(_flvG2.default.Events.ERROR, this._onError.bind(this));
@@ -12433,6 +12435,9 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
     }, {
         key: "seek",
         value: function seek(time) {
+            if (this.element == null) {
+                return false;
+            }
             if (this.seeking) {
                 return false;
             }
@@ -12441,6 +12446,9 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
                 this.callbackPlaybackControlEvent(_gplayerEvents.GPlaybackControlStatus.SeekStart, "开始切换播放时间");
             }
 
+            if (!this._seekByCached(time)) {
+                return false;
+            }
             if (this.playbackControl == PlaybackControl.Active) {
                 this._seekByActive(time);
             } else {
@@ -12487,6 +12495,39 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
             return PlaybackControl.Active;
         }
     }, {
+        key: "_seekByCached",
+        value: function _seekByCached(time) {
+            if (!this.streamEnd) {
+                return true;
+            }
+
+            this.seeking = true;
+
+            var bCached = false;
+            var buffered = this.element.buffered;
+            for (var i = 0; i < buffered.length; i++) {
+                var from = buffered.start(i);
+                var to = buffered.end(i);
+                if (time > from && time < to) {
+                    bCached = true;
+                }
+            }
+
+            if (bCached && time > this.element.currentTime) {
+                this.element.currentTime = time;
+                if (this.callbackPlaybackControlEvent != null) {
+                    this.callbackPlaybackControlEvent(_gplayerEvents.GPlaybackControlStatus.SeekSuccess, "切换播放时间成功");
+                }
+            } else {
+                if (this.callbackPlaybackControlEvent != null) {
+                    this.callbackPlaybackControlEvent(_gplayerEvents.GPlaybackControlStatus.SeekFail, "缓冲流已结束，无法切换到未缓冲区域");
+                }
+            }
+
+            this.seeking = false;
+            return false;
+        }
+    }, {
         key: "_seekByActive",
         value: function _seekByActive(time) {
             var _this2 = this;
@@ -12501,7 +12542,7 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
                 if (_this2.callbackPlaybackControlEvent != null) {
                     _this2.callbackPlaybackControlEvent(_gplayerEvents.GPlaybackControlStatus.SeekFail, "切换播放时间失败，请重新尝试");
                 }
-            }, 10 * 1000);
+            }, 15 * 1000);
 
             this.seekTime = time;
             this.needSeek = true;
@@ -12554,6 +12595,7 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
     }, {
         key: "_onMediaSourceEnd",
         value: function _onMediaSourceEnd(info) {
+            this.streamEnd = true;
             if (this.callbackMediaSourceEnd != null) {
                 this.callbackMediaSourceEnd();
             }

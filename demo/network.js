@@ -36,7 +36,6 @@ function httpGet(url, func)
         }
         else {
             let data = request.response;
-            console.log(data);
             func(url, true, data);
         }
     }

@@ -14,13 +14,13 @@
             <div id="streamURL">
                 <div class="url-input">
                     <label for="idImei">imei:</label>
-                    <input id="idImei" type="text" value="131064253103060" />
+                    <input id="idImei" type="text" value="125013302691515" />
                     <label for="idChannel">channel:</label>
                     <input id="idChannel" type="text" value="1" />
                     <label for="idStart">开始时间:</label>
-                    <input id="idStart" type="text" value="2021-04-26 10:20:00" />
+                    <input id="idStart" type="text" value="2021-05-06 09:15:00" />
                     <label for="idEnd">结束时间:</label>
-                    <input id="idEnd" type="text" value="2021-04-26 10:35:00" />
+                    <input id="idEnd" type="text" value="2021-05-06 09:30:00" />
                 </div>
                 <div class="options">
                     <input type="checkbox" id="isLive" onchange="saveSettings()" />
@@ -31,7 +31,7 @@
 
         <div class="video-container">
             <div>
-                <video name="videoElement" class="centeredVideo" controls autoplay>
+                <video name="videoElement" class="centeredVideo" autoplay>
                     Your browser is too old which doesn't support HTML5 video.
                 </video>
             </div>
@@ -48,13 +48,13 @@
             <button onclick="onBtDestroy()">Destroy</button>
             <button onclick="onBtPause()">暂停</button>
             <button onclick="onBtResume()">恢复播放</button>
-            <input style="width:150px" type="text" name="seekpoint" value="2021-04-26 10:30:00"/>
+            <!-- <input style="width:150px" type="text" name="seekpoint" value="2021-04-26 10:30:00"/>
             <button onclick="onBtSeek()">跳转到</button>
             <button onclick="fastForward2()">2倍速快进</button>
             <button onclick="fastForward4()">4倍速快进</button>
             <button onclick="nomorl()">正常速度</button>
             <button onclick="fastReverse2()">2倍速快退</button>
-            <button onclick="fastReverse4()">4倍速快退</button>
+            <button onclick="fastReverse4()">4倍速快退</button> -->
         </div>
         <textarea name="logcatbox" class="logcatBox" rows="10" readonly></textarea>
     </div>
@@ -121,7 +121,7 @@
                 player.on(gmediajs.GPlayerEvent.STATISTICS_INFO,(info)=>{
                     let speed = Number(info.speed)
                     speed = Math.ceil(speed);
-                    console.log(speed+ 'kB/s');
+                    //console.log(speed+ 'kB/s');
                 });
                 player.attachMediaElement(element);
                 player.load();

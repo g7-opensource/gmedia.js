@@ -21,6 +21,7 @@ export class HttpFlvPlayer extends GPlayer {
         this.isLive = true;
         this.playbackControl = PlaybackControl.None;
 
+        this.streamEnd = false;
         this.needSeek = false;
         this.seeking = false;
         this.seekTime = 0;
@@ -48,6 +49,7 @@ export class HttpFlvPlayer extends GPlayer {
             enableStashBuffer: false,
             deferLoadAfterSourceOpen:true
         });
+        //fixAudioTimestampGap:false 会导致播放音视频不同步无法播放
 
         this.player.on(flvjs.Events.STATISTICS_INFO, this._onStatisticsInfo.bind(this));
         this.player.on(flvjs.Events.ERROR, this._onError.bind(this));
@@ -116,15 +118,21 @@ export class HttpFlvPlayer extends GPlayer {
     }
 
     seek(time) {
+        if (this.element == null) {
+            return false;
+        }
         if (this.seeking) {
             return false;
         }
-
+        
         if (this.callbackPlaybackControlEvent != null) {
             this.callbackPlaybackControlEvent(GPlaybackControlStatus.SeekStart, 
                 "开始切换播放时间");
         }
 
+        if (!this._seekByCached(time)) {
+            return false;
+        }
         if (this.playbackControl == PlaybackControl.Active) {
             this._seekByActive(time);
         }
@@ -170,6 +178,40 @@ export class HttpFlvPlayer extends GPlayer {
         return PlaybackControl.Active;
     }
 
+    _seekByCached(time) {
+        if (!this.streamEnd) {
+            return true;
+        }
+
+        this.seeking = true;
+
+        let bCached = false;
+        let buffered = this.element.buffered;
+        for (let i = 0; i < buffered.length; i++) {
+            let from = buffered.start(i);
+            let to = buffered.end(i);
+            if (time > from && time < to) {
+                bCached = true;
+            }
+        }
+
+        if (bCached && time > this.element.currentTime) {
+            this.element.currentTime = time;
+            if (this.callbackPlaybackControlEvent != null) {
+                this.callbackPlaybackControlEvent(GPlaybackControlStatus.SeekSuccess,
+                    "切换播放时间成功");
+            }
+        }
+        else {
+            if (this.callbackPlaybackControlEvent != null) {
+                this.callbackPlaybackControlEvent(GPlaybackControlStatus.SeekFail,
+                    "缓冲流已结束，无法切换到未缓冲区域");
+            }
+        }
+
+        this.seeking = false;
+        return false;
+    }
 
     _seekByActive(time) {
         this.seeking = true;
@@ -183,7 +225,7 @@ export class HttpFlvPlayer extends GPlayer {
                 this.callbackPlaybackControlEvent(GPlaybackControlStatus.SeekFail,
                     "切换播放时间失败，请重新尝试");
             }
-        },10*1000);
+        },15*1000);
 
         this.seekTime = time;
         this.needSeek = true;
@@ -231,6 +273,7 @@ export class HttpFlvPlayer extends GPlayer {
     }
 
     _onMediaSourceEnd(info) {
+        this.streamEnd = true;
         if (this.callbackMediaSourceEnd != null) {
             this.callbackMediaSourceEnd();
         }
