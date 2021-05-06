@@ -64,6 +64,8 @@
     <script src="../dist/gmedia.js"></script>
 
     <script>
+        const logToConsole = false;
+        var logcatbox;
         var element;
         var player;
         var nStart;
@@ -73,6 +75,7 @@
         var isDroping = false; //是否正常拖动进度条
 
         function onLoad() {
+            logcatbox = document.getElementsByName('logcatbox')[0];
             elRange = document.getElementById('idRange');
             elPlayTime = document.getElementById('idPlayTime');
         }
@@ -88,7 +91,7 @@
                 let json = {};
                 if (!bOk || (json = JSON.parse(data)).data.lenght == 0)
                 {
-                    console.log("获取播放地址失败");
+                    log("获取播放地址失败");
                 }
                 let url = json.data[0].flv_url;
                 if (player != null) {
@@ -110,13 +113,13 @@
                     elPlayTime.value = strCurPlayTime;
                 });
                 player.on(gmediajs.GPlayerEvent.PLAYBACK_CONTROL_EVENT,(status, detail)=>{
-                    console.log('status ' + status + ' ' + detail);
+                    log('playback_control_status ' + status + ' ' + detail);
                 });
                 player.on(gmediajs.GPlayerEvent.ERROR,(type, subtype, detail)=>{
-                    console.log('error ' + type + ' ' + subtype + ' ' + detail);
+                    log('error ' + type + ' ' + subtype + ' ' + detail);
                 });
                 player.on(gmediajs.GPlayerEvent.MEDIA_SOURCE_END,()=>{
-                    console.log('media_source_end ');
+                    log('media_source_end ');
                 });
                 player.on(gmediajs.GPlayerEvent.STATISTICS_INFO,(info)=>{
                     let speed = Number(info.speed)
@@ -177,12 +180,12 @@
 
         function onElRangeMouseDown() {
             isDroping = true;
-            console.log("onElRangeMouseDown");
+            log("onElRangeMouseDown");
         }
 
         function onElRangeMouseUp() {
             isDroping = false;
-            console.log("onElRangeMouseUp");
+            log("onElRangeMouseUp");
         }
 
         function onElRangeChange() {
@@ -191,7 +194,7 @@
             let nOff = (value/100)*(nEnd-nStart); 
             let strSeek = getYMDHMS(nStart + nOff);
             nOff = nOff/1000;
-            console.log("准备跳转到:" + strSeek + "差值:" + nOff);
+            log("准备跳转到:" + strSeek + "差值:" + nOff);
 
             let imei = document.getElementById('idImei').value;
             let channel = document.getElementById('idChannel').value;
@@ -201,7 +204,19 @@
             }
         }
 
+        function log(str) {
+            if (logToConsole) {
+                console.log(str);
+            }
+            else {
+                logToTextbox(str);
+            }
+        }
 
+        function logToTextbox(str) {
+            logcatbox.value = logcatbox.value + str + '\n';
+            logcatbox.scrollTop = logcatbox.scrollHeight;
+        }
       
     </script>
     
