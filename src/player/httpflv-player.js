@@ -19,6 +19,8 @@ export class HttpFlvPlayer extends GPlayer {
         this.player = null;
         this.element = null;
         this.isLive = true;
+
+        this.playbackPlan = 1;
         this.playbackControl = PlaybackControl.None;
 
         this.streamEnd = false;
@@ -41,15 +43,16 @@ export class HttpFlvPlayer extends GPlayer {
         };
     }
 
-    init (url) {
-        this.isLive = this._isLive(url);  
+    init (url, config) {
+        this._checkConfig(config);
+        this.isLive = this._checkIfLive(url);  
         this.playbackControl = this._checkPlaybackControl(url);  
+
         this.player = flvjs.createPlayer({isLive:this.isLive, type:'flv',url:url}, {
             lazyLoad: false,
             enableStashBuffer: false,
             deferLoadAfterSourceOpen:true
         });
-        //fixAudioTimestampGap:false 会导致播放音视频不同步无法播放
 
         this.player.on(flvjs.Events.STATISTICS_INFO, this._onStatisticsInfo.bind(this));
         this.player.on(flvjs.Events.ERROR, this._onError.bind(this));
@@ -117,6 +120,15 @@ export class HttpFlvPlayer extends GPlayer {
         return false;
     }
 
+    capture() {
+        let canvas = document.createElement("canvas");
+        canvas.width = this.element.videoWidth;
+        canvas.height = this.element.videoHeight;
+        canvas.getContext('2d').drawImage(this.element, 0, 0, canvas.width, canvas.height);
+        let dataurl = canvas.toDataURL();
+        return dataurl;
+    }
+
     seek(time) {
         if (this.element == null) {
             return false;
@@ -157,8 +169,17 @@ export class HttpFlvPlayer extends GPlayer {
         }
     }
 
+    _checkConfig(config) {
+        if (config == null) {
+            return;
+        }
 
-    _isLive(url) {
+        if (config.playbackPlan != null) {
+            this.playbackPlan = config.playbackPlan;
+        }
+    }
+
+    _checkIfLive(url) {
         if (url.indexOf(PlaybackKey) != -1) {
             return false;
         }
@@ -280,6 +301,15 @@ export class HttpFlvPlayer extends GPlayer {
     }
 
     _onElementTime(event) {
+        //回放方案1
+        if (this.playbackPlan == 1) {
+            if (this.callbackTimeUpdate != null && this.element != null) {
+                this.callbackTimeUpdate(this.element.currentTime);
+            }
+            return;
+        }
+
+        //回放方案2
         if (this.playbackControl === PlaybackControl.Active) {
             if (!this.seeking && this.callbackTimeUpdate != null && this.element != null) {
                 this.callbackTimeUpdate(this.element.currentTime);

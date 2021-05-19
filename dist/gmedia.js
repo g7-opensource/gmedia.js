@@ -12182,8 +12182,10 @@ var _gplayer = _dereq_('./player/gplayer.js');
 var _httpflvPlayer = _dereq_('./player/httpflv-player.js');
 
 function createPlayer(url) {
+  var config = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+
   var player = new _httpflvPlayer.HttpFlvPlayer();
-  player.init(url);
+  player.init(url, config);
   return player;
 }
 
@@ -12253,7 +12255,7 @@ var GPlayer = exports.GPlayer = function () {
 
     _createClass(GPlayer, [{
         key: 'init',
-        value: function init(url) {}
+        value: function init(url, config) {}
     }, {
         key: 'on',
         value: function on(event, call) {}
@@ -12333,6 +12335,8 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
         _this.player = null;
         _this.element = null;
         _this.isLive = true;
+
+        _this.playbackPlan = 1;
         _this.playbackControl = PlaybackControl.None;
 
         _this.streamEnd = false;
@@ -12358,15 +12362,16 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
 
     _createClass(HttpFlvPlayer, [{
         key: "init",
-        value: function init(url) {
-            this.isLive = this._isLive(url);
+        value: function init(url, config) {
+            this._checkConfig(config);
+            this.isLive = this._checkIfLive(url);
             this.playbackControl = this._checkPlaybackControl(url);
+
             this.player = _flvG2.default.createPlayer({ isLive: this.isLive, type: 'flv', url: url }, {
                 lazyLoad: false,
                 enableStashBuffer: false,
                 deferLoadAfterSourceOpen: true
             });
-            //fixAudioTimestampGap:false 会导致播放音视频不同步无法播放
 
             this.player.on(_flvG2.default.Events.STATISTICS_INFO, this._onStatisticsInfo.bind(this));
             this.player.on(_flvG2.default.Events.ERROR, this._onError.bind(this));
@@ -12433,6 +12438,16 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
             return false;
         }
     }, {
+        key: "capture",
+        value: function capture() {
+            var canvas = document.createElement("canvas");
+            canvas.width = this.element.videoWidth;
+            canvas.height = this.element.videoHeight;
+            canvas.getContext('2d').drawImage(this.element, 0, 0, canvas.width, canvas.height);
+            var dataurl = canvas.toDataURL();
+            return dataurl;
+        }
+    }, {
         key: "seek",
         value: function seek(time) {
             if (this.element == null) {
@@ -12473,8 +12488,19 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
             }
         }
     }, {
-        key: "_isLive",
-        value: function _isLive(url) {
+        key: "_checkConfig",
+        value: function _checkConfig(config) {
+            if (config == null) {
+                return;
+            }
+
+            if (config.playbackPlan != null) {
+                this.playbackPlan = config.playbackPlan;
+            }
+        }
+    }, {
+        key: "_checkIfLive",
+        value: function _checkIfLive(url) {
             if (url.indexOf(PlaybackKey) != -1) {
                 return false;
             }
@@ -12603,6 +12629,15 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
     }, {
         key: "_onElementTime",
         value: function _onElementTime(event) {
+            //回放方案1
+            if (this.playbackPlan == 1) {
+                if (this.callbackTimeUpdate != null && this.element != null) {
+                    this.callbackTimeUpdate(this.element.currentTime);
+                }
+                return;
+            }
+
+            //回放方案2
             if (this.playbackControl === PlaybackControl.Active) {
                 if (!this.seeking && this.callbackTimeUpdate != null && this.element != null) {
                     this.callbackTimeUpdate(this.element.currentTime);

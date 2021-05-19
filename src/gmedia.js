@@ -2,9 +2,9 @@ import {GPlayerEvent, GErrorType, GPlaybackControlStatus} from './player/gplayer
 import {GPlayer} from './player/gplayer.js';
 import { HttpFlvPlayer } from './player/httpflv-player.js';
 
-function createPlayer(url) {
+function createPlayer(url, config = null) {
   let player = new HttpFlvPlayer();
-  player.init(url);
+  player.init(url, config);
   return player;
 }
 

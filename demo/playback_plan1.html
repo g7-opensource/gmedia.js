@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <title>gmediajs demo</title>
+    <link rel="stylesheet" type="text/css" href="demo.css" />
+</head>
+
+<body onload="onLoad()">
+    
+    <div class="mainContainer">
+        <div>
+            <div id="streamURL">
+                <div class="url-input">
+                    <label for="idImei">imei:</label>
+                    <input id="idImei" type="text" value="106064891800618" />
+                    <label for="idChannel">channel:</label>
+                    <input id="idChannel" type="text" value="1" />
+                    <label for="idStart">开始时间:</label>
+                    <input id="idStart" type="text" value="2021-05-19 09:10:00" />
+                    <label for="idEnd">结束时间:</label>
+                    <input id="idEnd" type="text" value="2021-05-19 09:25:00" />
+                </div>
+            </div>
+        </div>
+
+        <div class="video-container">
+            <div>
+                <video name="idVideo" class="centeredVideo" autoplay>
+                    Your browser is too old which doesn't support HTML5 video.
+                </video>
+            </div>
+        </div>
+
+        <div class="controls">
+            <label for="idPlayTime">当前播放时间:</label>
+            <input id="idPlayTime" type="text" value="" />
+        </div>
+
+        <input type="range" class="controls" id="idRange" value= '0' min="0" max="100" 
+            onchange="onElRangeChange()" onmousedown="onElRangeMouseDown()" onmouseup="onElRangeMouseUp()">
+
+        <div class="controls">
+            <button onclick="onBtLoad()">Load</button>
+            <button onclick="onBtDestroy()">Destroy</button>
+            <button onclick="onBtPause()">暂停</button>
+            <button onclick="onBtResume()">恢复播放</button>
+        </div>
+        <textarea name="idLogbox" class="logcatBox" rows="10" readonly></textarea>
+    </div>
+
+    <script src="./util.js"></script>
+    <script src="./network.js"></script>
+    <script src="../dist/gmedia.js"></script>
+
+    <script>
+        const logToConsole = false;
+        var elLogbox;          //显示日志控件
+        var elRange;           //进度条控件
+        var elPlayTime;        //显示播放时间控件
+        var elVideo;           //显示播放视频控件
+
+        var player;            //gmediajs播放器对象
+
+        var imei;
+        var channel;
+        var strStart;          //回放起始时间，日期格式
+        var strEnd;            //回放结束时间，日期格式
+        var nStart;            //回放起始时间，时间戳格式，精确到毫秒
+        var nEnd;              //回放结束时间, 时间戳格式，精确到毫秒
+
+        var nSeekTime = 0;     //最新手动通过进度条拖动到的播放时间
+        var isDroping = false; //是否正在拖动进度条
+
+        function onLoad() {
+            elLogbox = document.getElementsByName('idLogbox')[0];
+            elRange = document.getElementById('idRange');
+            elPlayTime = document.getElementById('idPlayTime');
+            elVideo = document.getElementsByName('idVideo')[0];
+        }
+
+        function onBtLoad() {
+            nSeekTime = 0;
+            elRange.value = 0;
+            imei = document.getElementById('idImei').value;
+            channel = document.getElementById('idChannel').value;
+            strStart = document.getElementById('idStart').value;
+            strEnd = document.getElementById('idEnd').value;
+            nStart = new Date(strStart).getTime();
+            nEnd = new Date(strEnd).getTime();
+
+            startPlayback(imei, channel, strStart, strEnd);
+        }
+
+        function startPlayback(imei, channel, strStart, strEnd) {
+            getPlaybackUrl(imei, channel, strStart, strEnd,(requestUrl,bOk, data)=>{
+                let json = {};
+                if (!bOk || (json = JSON.parse(data)).data.lenght == 0)
+                {
+                    log("获取播放地址失败");
+                }
+                let url = json.data[0].flv_url;
+            
+
+                let captureUrl;
+                if (player != null) {
+                    //在播放器销毁前截张最后的视频画面
+                    captureUrl = player.capture();
+                    //销毁播放器
+                    player.destroy();
+                    player = null;
+                }
+    
+                //将截图赋值给video标签预显示画面，这样避免了切换期间白屏
+                elVideo.poster = captureUrl;
+                player = gmediajs.createPlayer(url);
+                player.on(gmediajs.GPlayerEvent.TIMEUPDATE,(time)=>{
+                    if (isDroping) { 
+                        //如果正在拖拽进度条，暂时先不更新进度和时间
+                        //因为在鼠标down到鼠标up期间,如果range控件进度被改变，range控件onchange事件将不会触发
+                        return;
+                    }
+
+                    let nCurPlayTime = time*1000 + nSeekTime;
+                    elRange.value = (nCurPlayTime / (nEnd - nStart))*100;
+                    elPlayTime.value = getYMDHMS(nCurPlayTime + nStart);
+                });
+                player.attachMediaElement(elVideo);
+                player.load();
+            });
+        }
+
+        function onBtResume() {
+            if (player != null) {
+                player.resume();
+            }
+        }
+
+        function onBtPause() {
+            if (player != null) {
+                player.pause();
+            }
+        }
+
+        function onBtDestroy() {
+            if (player != null) {
+                player.destroy();
+                player = null;
+            }
+        }
+
+        function onElRangeMouseDown() {
+            isDroping = true;
+            log("onElRangeMouseDown");
+        }
+
+        function onElRangeMouseUp() {
+            isDroping = false;
+            log("onElRangeMouseUp");
+        }
+
+        function onElRangeChange() {
+            //value : 进度条最大值（进度条最小值必须为0,便于计算）= 需要跳转到的时间 :（播放结束时间 - 播放开始时间）
+            nSeekTime = (elRange.value / 100) * (nEnd - nStart); 
+            let strSeek = getYMDHMS(nStart + nSeekTime);
+            
+            log("准备跳转到:" + strSeek + "差值:" + nSeekTime + "毫秒");
+
+            startPlayback(imei,channel,strSeek,strEnd)
+        }
+
+        function log(str) {
+            if (logToConsole) {
+                console.log(str);
+            }
+            else {
+                logToTextbox(str);
+            }
+        }
+
+        function logToTextbox(str) {
+            elLogbox.value = elLogbox.value + str + '\n';
+            elLogbox.scrollTop = elLogbox.scrollHeight;
+        }
+           
+    </script>
+</body>
+</html>

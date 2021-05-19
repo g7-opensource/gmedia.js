@@ -4,7 +4,7 @@ export class GPlayer {
         this._type = typeName || 'undefined';
     }
 
-    init(url) {
+    init(url, config) {
     }
 
     on(event, call) {

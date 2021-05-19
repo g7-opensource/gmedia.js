@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <title>gmediajs demo</title>
+    <link rel="stylesheet" type="text/css" href="demo.css" />
+</head>
+
+<body onload="onLoad()">
+    
+    <div class="mainContainer">
+        <div>
+            <div id="streamURL">
+                <div class="url-input">
+                    <label for="idImei">imei:</label>
+                    <input id="idImei" type="text" value="106064891800618" />
+                    <label for="idChannel">channel:</label>
+                    <input id="idChannel" type="text" value="1" />
+                </div>
+                <div class="options">
+                    <input type="checkbox" id="idStreamType"  />
+                    <label for="idStreamType">主码流</label>
+                    <input type="checkbox" id="idAvitemType" checked/>
+                    <label for="idAvitemType">音视频</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="video-container">
+            <div>
+                <video name="idVideo" class="centeredVideo" autoplay>
+                    Your browser is too old which doesn't support HTML5 video.
+                </video>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="onBtLoad()">Load</button>
+            <button onclick="onBtDestroy()">Destroy</button>
+            <button onclick="onBtPause()">暂停</button>
+            <button onclick="onBtResume()">恢复播放</button>
+        </div>
+        <textarea name="idLogbox" class="logcatBox" rows="10" readonly></textarea>
+    </div>
+
+    <script src="./util.js"></script>
+    <script src="./network.js"></script>
+    <script src="../dist/gmedia.js"></script>
+
+    <script>
+        const logToConsole = false;
+        var elLogbox;          //显示日志控件
+        var elVideo;           //显示播放视频控件
+        var player;            //gmediajs播放器对象
+
+        function onLoad() {
+            elLogbox = document.getElementsByName('idLogbox')[0];
+            elVideo = document.getElementsByName('idVideo')[0];
+        }
+
+        function onBtLoad() {
+            let imei = document.getElementById('idImei').value;
+            let channel = document.getElementById('idChannel').value;
+            let avitemType = document.getElementById('idStreamType').checked ? 0 : 1;
+            let streamType = document.getElementById('idAvitemType').checked ? 0 : 1;
+            getRealplayUrl(imei,channel,avitemType,streamType,(requestUrl,bOk, data)=>{
+                let json = {};
+                if (!bOk || (json = JSON.parse(data)).data.lenght == 0)
+                {
+                    log("获取播放地址失败");
+                }
+                let url = json.data[0].flv_url;
+            
+                if (player != null) {
+                    player.destroy();
+                    player = null;
+                }
+    
+                player = gmediajs.createPlayer(url);
+                player.on(gmediajs.GPlayerEvent.ERROR,(type, subtype, detail)=>{
+                    log('error ' + type + ' ' + subtype + ' ' + detail);
+                });
+                player.on(gmediajs.GPlayerEvent.MEDIA_SOURCE_END,()=>{
+                    log('media_source_end ');
+                });
+                player.on(gmediajs.GPlayerEvent.STATISTICS_INFO,(info)=>{
+                    let speed = Number(info.speed)
+                    speed = Math.ceil(speed);
+                    //console.log(speed+ 'kB/s');
+                });
+                player.attachMediaElement(elVideo);
+                player.load();
+            });
+        }
+        
+        function onBtResume() {
+            if (player != null) {
+                player.resume();
+            }
+        }
+
+        function onBtPause() {
+            if (player != null) {
+                player.pause();
+            }
+        }
+
+        function onBtDestroy() {
+            if (player != null) {
+                player.destroy();
+                player = null;
+            }
+        }
+
+        function log(str) {
+            if (logToConsole) {
+                console.log(str);
+            }
+            else {
+                logToTextbox(str);
+            }
+        }
+
+        function logToTextbox(str) {
+            elLogbox.value = elLogbox.value + str + '\n';
+            elLogbox.scrollTop = elLogbox.scrollHeight;
+        }
+           
+    </script>
+</body>
+</html>

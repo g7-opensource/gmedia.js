@@ -14,28 +14,25 @@
             <div id="streamURL">
                 <div class="url-input">
                     <label for="idImei">imei:</label>
-                    <input id="idImei" type="text" value="125013302691515" />
+                    <input id="idImei" type="text" value="106064891800618" />
                     <label for="idChannel">channel:</label>
                     <input id="idChannel" type="text" value="1" />
                     <label for="idStart">开始时间:</label>
-                    <input id="idStart" type="text" value="2021-05-06 09:15:00" />
+                    <input id="idStart" type="text" value="2021-05-19 09:10:00" />
                     <label for="idEnd">结束时间:</label>
-                    <input id="idEnd" type="text" value="2021-05-06 09:30:00" />
-                </div>
-                <div class="options">
-                    <input type="checkbox" id="isLive" onchange="saveSettings()" />
-                    <label for="isLive">isLive</label>  
+                    <input id="idEnd" type="text" value="2021-05-19 09:25:00" />
                 </div>
             </div>
         </div>
 
         <div class="video-container">
             <div>
-                <video name="videoElement" class="centeredVideo" autoplay>
+                <video name="idVideo" class="centeredVideo" autoplay>
                     Your browser is too old which doesn't support HTML5 video.
                 </video>
             </div>
         </div>
+
         <div class="controls">
             <label for="idPlayTime">当前播放时间:</label>
             <input id="idPlayTime" type="text" value="" />
@@ -48,15 +45,8 @@
             <button onclick="onBtDestroy()">Destroy</button>
             <button onclick="onBtPause()">暂停</button>
             <button onclick="onBtResume()">恢复播放</button>
-            <!-- <input style="width:150px" type="text" name="seekpoint" value="2021-04-26 10:30:00"/>
-            <button onclick="onBtSeek()">跳转到</button>
-            <button onclick="fastForward2()">2倍速快进</button>
-            <button onclick="fastForward4()">4倍速快进</button>
-            <button onclick="nomorl()">正常速度</button>
-            <button onclick="fastReverse2()">2倍速快退</button>
-            <button onclick="fastReverse4()">4倍速快退</button> -->
         </div>
-        <textarea name="logcatbox" class="logcatBox" rows="10" readonly></textarea>
+        <textarea name="idLogbox" class="logcatBox" rows="10" readonly></textarea>
     </div>
 
     <script src="./util.js"></script>
@@ -65,24 +55,30 @@
 
     <script>
         const logToConsole = false;
-        var logcatbox;
-        var element;
-        var player;
-        var nStart;
-        var nEnd;
-        var elRange;
-        var elPlayTime;
+        var elLogbox;          //显示日志控件
+        var elRange;           //进度条控件
+        var elPlayTime;        //显示播放时间控件
+        var elVideo;           //显示播放视频控件
+
+        var player;            //gmediajs播放器对象
+  
+        var imei;
+        var channel;
+        var nStart;            //回放起始时间，时间戳格式，精确到毫秒
+        var nEnd;              //回放结束时间, 时间戳格式，精确到毫秒
         var isDroping = false; //是否正常拖动进度条
 
         function onLoad() {
-            logcatbox = document.getElementsByName('logcatbox')[0];
+            elLogbox = document.getElementsByName('idLogbox')[0];
             elRange = document.getElementById('idRange');
             elPlayTime = document.getElementById('idPlayTime');
+            elVideo = document.getElementsByName('idVideo')[0];
         }
 
         function onBtLoad() {
-            let imei = document.getElementById('idImei').value;
-            let channel = document.getElementById('idChannel').value;
+            elRange.value = 0;
+            imei = document.getElementById('idImei').value;
+            channel = document.getElementById('idChannel').value;
             let strStart = document.getElementById('idStart').value;
             let strEnd = document.getElementById('idEnd').value;
             nStart = new Date(strStart).getTime();
@@ -94,23 +90,23 @@
                     log("获取播放地址失败");
                 }
                 let url = json.data[0].flv_url;
+
                 if (player != null) {
                     player.destroy();
                     player = null;
                 }
-                element = document.getElementsByName('videoElement')[0];
-                player = gmediajs.createPlayer(url);
+
+                player = gmediajs.createPlayer(url, {playbackPlan: 2});
                 player.on(gmediajs.GPlayerEvent.TIMEUPDATE,(time)=>{
                     if (isDroping) { 
                         //如果正在拖拽进度条，暂时先不更新进度和时间
                         //因为在鼠标down到鼠标up期间,如果range控件进度被改变，range控件onchange事件将不会触发
                         return;
                     }
-                    elRange.value = (time*1000 / (nEnd - nStart))*100;
 
-                    let nCurPlayTime = time*1000 + nStart;
-                    let strCurPlayTime = getYMDHMS(nCurPlayTime);
-                    elPlayTime.value = strCurPlayTime;
+                    let nCurPlayTime = time*1000;
+                    elRange.value = (nCurPlayTime / (nEnd - nStart))*100;
+                    elPlayTime.value = getYMDHMS(nCurPlayTime + nStart);
                 });
                 player.on(gmediajs.GPlayerEvent.PLAYBACK_CONTROL_EVENT,(status, detail)=>{
                     log('playback_control_status ' + status + ' ' + detail);
@@ -118,63 +114,28 @@
                 player.on(gmediajs.GPlayerEvent.ERROR,(type, subtype, detail)=>{
                     log('error ' + type + ' ' + subtype + ' ' + detail);
                 });
-                player.on(gmediajs.GPlayerEvent.MEDIA_SOURCE_END,()=>{
-                    log('media_source_end ');
-                });
-                player.on(gmediajs.GPlayerEvent.STATISTICS_INFO,(info)=>{
-                    let speed = Number(info.speed)
-                    speed = Math.ceil(speed);
-                    //console.log(speed+ 'kB/s');
-                });
-                player.attachMediaElement(element);
+                player.attachMediaElement(elVideo);
                 player.load();
             });
         }
 
 
         function onBtResume() {
-            if (player == null) {
-                return;
-            }
-
-            let bRes = player.resume();
-            if(bRes) {//返回true才需要向后台发送回放控制命令
-                //恢复播放默认返回false
+            if (player != null) {
+                player.resume();
             }
         }
 
         function onBtPause() {
-            if (player == null) {
-                return;
-            }
-
-            let bRes = player.pause();
-            if(bRes) {//返回true才需要向后台发送回放控制命令
-                //暂停播放默认返回false
+            if (player != null) {
+                player.pause();
             }
         }
 
         function onBtDestroy() {
-            if (player == null) {
-                return;
-            }
-
-            player.destroy();
-        }
-
-        function onBtSeek() {
-            let imei = document.getElementById('idImei').value;
-            let channel = document.getElementById('idChannel').value;
-            let strSeek = document.getElementsByName('seekpoint')[0].value;
-            let strStart = document.getElementById('idStart').value;
-            let dSeek = new Date(strSeek);
-            let dStart = new Date(strStart);
-            let nOff = dSeek.getTime() - dStart.getTime();          
-            nOff = nOff / 1000;
-
-            let bRes = player.seek(nOff);
-            if(bRes){//返回true才需要向后台发送回放控制命令
-                sendPlaybackControlCmdToServer(imei,channel,5,1,strSeek);
+            if (player != null) {
+                player.destroy();
+                player = null;
             }
         }
 
@@ -189,16 +150,13 @@
         }
 
         function onElRangeChange() {
-            let value = elRange.value ;
-            //value / 进度条最大值（进度条最小值必须为0）= 需要跳转到的时间 /（播放结束时间 - 播放开始时间）
-            let nOff = (value/100)*(nEnd-nStart); 
-            let strSeek = getYMDHMS(nStart + nOff);
-            nOff = nOff/1000;
-            log("准备跳转到:" + strSeek + "差值:" + nOff);
+            //value : 进度条最大值（进度条最小值必须为0,便于计算）= 需要跳转到的时间 :（播放结束时间 - 播放开始时间）
+            let nSeekTime = (elRange.value / 100)*(nEnd - nStart); 
+            let strSeek = getYMDHMS(nStart + nSeekTime);
 
-            let imei = document.getElementById('idImei').value;
-            let channel = document.getElementById('idChannel').value;
-            let bRes = player.seek(nOff);
+            log("准备跳转到:" + strSeek + "差值:" + nSeekTime + "毫秒");
+
+            let bRes = player.seek(nSeekTime/1000);
             if(bRes) {//返回true才需要向后台发送回放控制命令
                 sendPlaybackControlCmdToServer(imei,channel,5,1,strSeek);
             }
@@ -214,11 +172,10 @@
         }
 
         function logToTextbox(str) {
-            logcatbox.value = logcatbox.value + str + '\n';
-            logcatbox.scrollTop = logcatbox.scrollHeight;
+            elLogbox.value = elLogbox.value + str + '\n';
+            elLogbox.scrollTop = elLogbox.scrollHeight;
         }
       
-    </script>
-    
+    </script>   
 </body>
 </html>
