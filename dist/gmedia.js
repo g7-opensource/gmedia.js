@@ -12272,11 +12272,17 @@ var GPlayer = exports.GPlayer = function () {
         key: 'play',
         value: function play() {}
     }, {
+        key: 'capture',
+        value: function capture() {}
+    }, {
         key: 'pause',
         value: function pause() {}
     }, {
         key: 'resume',
         value: function resume() {}
+    }, {
+        key: 'seekToNewestTime',
+        value: function seekToNewestTime() {}
     }, {
         key: 'seek',
         value: function seek(time) {}
@@ -12426,6 +12432,16 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
             this.player.play();
         }
     }, {
+        key: "capture",
+        value: function capture() {
+            var canvas = document.createElement("canvas");
+            canvas.width = this.element.videoWidth;
+            canvas.height = this.element.videoHeight;
+            canvas.getContext('2d').drawImage(this.element, 0, 0, canvas.width, canvas.height);
+            var dataurl = canvas.toDataURL();
+            return dataurl;
+        }
+    }, {
         key: "pause",
         value: function pause() {
             this.element.pause();
@@ -12438,14 +12454,14 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
             return false;
         }
     }, {
-        key: "capture",
-        value: function capture() {
-            var canvas = document.createElement("canvas");
-            canvas.width = this.element.videoWidth;
-            canvas.height = this.element.videoHeight;
-            canvas.getContext('2d').drawImage(this.element, 0, 0, canvas.width, canvas.height);
-            var dataurl = canvas.toDataURL();
-            return dataurl;
+        key: "seekToNewestTime",
+        value: function seekToNewestTime() {
+            var buffered = this.element.buffered;
+            if (buffered.length > 0) {
+                var from = buffered.start(buffered.length - 1);
+                var to = buffered.end(buffered.length - 1);
+                this.element.currentTime = to;
+            }
         }
     }, {
         key: "seek",

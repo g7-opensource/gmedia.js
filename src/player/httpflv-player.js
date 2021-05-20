@@ -110,6 +110,15 @@ export class HttpFlvPlayer extends GPlayer {
         this.player.play();
     }
 
+    capture() {
+        let canvas = document.createElement("canvas");
+        canvas.width = this.element.videoWidth;
+        canvas.height = this.element.videoHeight;
+        canvas.getContext('2d').drawImage(this.element, 0, 0, canvas.width, canvas.height);
+        let dataurl = canvas.toDataURL();
+        return dataurl;
+    }
+
     pause() {
         this.element.pause();
         return false;
@@ -120,13 +129,13 @@ export class HttpFlvPlayer extends GPlayer {
         return false;
     }
 
-    capture() {
-        let canvas = document.createElement("canvas");
-        canvas.width = this.element.videoWidth;
-        canvas.height = this.element.videoHeight;
-        canvas.getContext('2d').drawImage(this.element, 0, 0, canvas.width, canvas.height);
-        let dataurl = canvas.toDataURL();
-        return dataurl;
+    seekToNewestTime () {
+        let buffered = this.element.buffered;
+        if (buffered.length > 0) { 
+            let from = buffered.start(buffered.length -1);
+            let to = buffered.end(buffered.length -1);
+            this.element.currentTime = to;
+        }
     }
 
     seek(time) {

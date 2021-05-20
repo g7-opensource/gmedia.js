@@ -40,6 +40,7 @@
             <button onclick="onBtDestroy()">Destroy</button>
             <button onclick="onBtPause()">暂停</button>
             <button onclick="onBtResume()">恢复播放</button>
+            <button onclick="onBtSeekToNewesetTime()">跳转到最新时间</button>
         </div>
         <textarea name="idLogbox" class="logcatBox" rows="10" readonly></textarea>
     </div>
@@ -93,16 +94,22 @@
                 player.load();
             });
         }
-        
+
+        function onBtPause() {
+            if (player != null) {
+                player.pause();
+            }
+        }
+
         function onBtResume() {
             if (player != null) {
                 player.resume();
             }
         }
 
-        function onBtPause() {
+        function onBtSeekToNewesetTime() {
             if (player != null) {
-                player.pause();
+                player.seekToNewestTime();
             }
         }
 

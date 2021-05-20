@@ -25,12 +25,20 @@ export class GPlayer {
 
     }
 
+    capture() {
+
+    }
+
     pause() {
         
     }
 
     resume() {
         
+    }
+
+    seekToNewestTime () {
+
     }
 
     seek(time) {

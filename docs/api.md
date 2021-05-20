@@ -46,8 +46,10 @@ interface GPlayer {
     destroy(): void;
     on(event: string, listener: Function): void;
     off(event: string): void;
+    capture(): string;
     pause(): boolean;
     resume(): boolean; 
+    seekToNewestTime(): void;
     seek(time:int): boolean; 
 }
 ```
@@ -102,6 +104,15 @@ player.off(gmediajs.GPlayerEvent.PLAYBACK_CONTROL_EVENT);
     无
 
 ```js
+let pngUrl = player.capture();
+```
+功能:截图
+参数:
+    无
+返回值:
+    字符串形式，png格式，以base64编码的图片，可用于赋值给img标签src,或赋值给video标签poster用于预显示图片，或用于保存到本地，或上传到服务器
+
+```js
 let bRes = player.pause();
 ```
 功能:暂停播放
@@ -120,9 +131,18 @@ let bRes = player.resume();
     bool，true:需要调用后台恢复播放接口，false:不需要调用后台恢复播放接口，目前只会返回false
 
 ```js
+player.seekToNewestTime();
+```
+功能:实时视频，先暂停再恢复播放后，可用于跳转到最新的缓存时间
+参数:
+    无
+返回值:
+    无
+
+```js
 let bRes = player.seek(time);
 ```
-功能:跳转播放时间
+功能:历史视频回放，跳转播放时间
 参数:
     time:准备跳转到的时间，单位秒，以开始播放时间为0起点；
     比如回放2021-04-28 10:00:00到2021-04-28 10:30:00时间段的录像，跳转到2021-04-28 10:10:00那么就穿600，
