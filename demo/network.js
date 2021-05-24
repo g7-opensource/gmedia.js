@@ -13,6 +13,14 @@ function getRealplayUrl(imei,channel,avitemType,streamType,callback)
     httpGet(url,callback);
 }
 
+function getTalkUrl(imei,channel,callback)
+{
+    let url = "http://39.106.82.213:9234/vega/video/open_live?imei=" +  imei +
+              "&channels=" + channel +
+              "&avitemType=" + 2;
+    httpGet(url,callback);
+}
+
 function getPlaybackUrl(imei,channel,start,end,callback)
 {
     let url = "http://39.106.82.213:9234/vega/video/open_playback?imei=" +  imei +

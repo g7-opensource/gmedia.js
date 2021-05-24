@@ -1,6 +1,8 @@
 import {GPlayerEvent, GErrorType, GPlaybackControlStatus} from './player/gplayer-events';
+import {GTalkerEvent, GTalkerConnectStatus, GTalkerConnectErrorType} from './talker/gtalker-events';
 import {GPlayer} from './player/gplayer.js';
 import { HttpFlvPlayer } from './player/httpflv-player.js';
+import { HttpFlvTalker } from './talker/httpflv-talker.js';
 
 function createPlayer(url, config = null) {
   let player = new HttpFlvPlayer();
@@ -8,9 +10,20 @@ function createPlayer(url, config = null) {
   return player;
 }
 
+function createTalker(downUrl, upUrl, imei, channel, config = null) {
+  let talker = new HttpFlvTalker();
+  if (!talker.init(downUrl, upUrl, imei, channel, config)) {
+    return null;
+  }
+  return talker;
+}
+
 function isHttpFlvSupported() {
-  return window.MediaSource &&
-        window.MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01E,mp4a.40.2"');
+  return HttpFlvPlayer.isSupported();
+}
+
+function isTalkSupported() {
+  return HttpFlvTalker.isSupported();
 }
 
 let gmediajs = {};
@@ -21,5 +34,12 @@ gmediajs.HttpFlvPlayer = HttpFlvPlayer;
 gmediajs.GPlayerEvent = GPlayerEvent;
 gmediajs.GErrorType = GErrorType;
 gmediajs.GPlaybackControlStatus = GPlaybackControlStatus;
+
+gmediajs.createTalker = createTalker;
+gmediajs.isTalkSupported = isTalkSupported;
+gmediajs.HttpFlvTalker = HttpFlvTalker;
+gmediajs.GTalkerEvent = GTalkerEvent;
+gmediajs.GTalkerConnectStatus = GTalkerConnectStatus;
+gmediajs.GTalkerConnectErrorType = GTalkerConnectErrorType;
 
 export default gmediajs;

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <title>gmediajs demo</title>
+    <link rel="stylesheet" type="text/css" href="demo.css" />
+</head>
+
+<body onload="onLoad()">
+    
+    <div class="mainContainer">
+        <div>
+            <div id="streamURL">
+                <div class="url-input">
+                    <label for="idImei">imei:</label>
+                    <input id="idImei" type="text" value="131064253103060" />
+                    <label for="idChannel">channel:</label>
+                    <input id="idChannel" type="text" value="1" />
+                </div>
+            </div>
+        </div>
+
+        <div class="video-container">
+            <div>
+                <audio name="idAudio" class="centeredVideo" autoplay controls>
+                    Your browser is too old which doesn't support HTML5 audio.
+                </audio>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="onBtStartTalk()">开始对讲</button>
+            <button onclick="onBtStopTalk()">结束对讲</button>
+        </div>
+        <textarea name="idLogbox" class="logcatBox" rows="10" readonly></textarea>
+    </div>
+
+    <script src="./util.js"></script>
+    <script src="./network.js"></script>
+    <script src="../dist/gmedia.js"></script>
+
+    <script>
+        const logToConsole = false;
+        var elLogbox;          //显示日志控件
+        var elAudio;           //播放语音控件控件
+        var talker;            //gmediajs播放器对象
+
+        function onLoad() {
+            elLogbox = document.getElementsByName('idLogbox')[0];
+            elAudio = document.getElementsByName('idAudio')[0];
+        }
+
+        function onBtStartTalk() {
+            let imei = document.getElementById('idImei').value;
+            let channel = document.getElementById('idChannel').value;
+            getTalkUrl(imei,channel,(requestUrl,bOk, data)=>{
+                let json = {};
+                if (!bOk || (json = JSON.parse(data)).data.lenght == 0)
+                {
+                    log("获取播放地址失败");
+                }
+                if (json.data[0].flv_url == null || json.data[0].wss == null)
+                {
+                    log("获取播放地址失败");
+                }
+                let downUrl = json.data[0].flv_url;
+                let upUrl =  json.data[0].wss;
+            
+                if (talker != null) {
+                    talker.destroy();
+                    talker = null;
+                }
+    
+                talker = gmediajs.createTalker(downUrl, upUrl, imei, channel);
+                talker.on(gmediajs.GTalkerEvent.CONNECT_STATUS, (connect_status, connect_error_type)=>{
+                    log("OnGTalkerEvent: " + connect_status + "  " + connect_error_type);
+                });
+                talker.attachMediaElement(elAudio);
+                talker.load();
+            });
+        }
+
+        function onBtStopTalk() {
+            if (talker != null) {
+                talker.destroy();
+                talker = null;
+            }
+        }
+
+        function log(str) {
+            if (logToConsole) {
+                console.log(str);
+            }
+            else {
+                logToTextbox(str);
+            }
+        }
+
+        function logToTextbox(str) {
+            elLogbox.value = elLogbox.value + str + '\n';
+            elLogbox.scrollTop = elLogbox.scrollHeight;
+        }
+           
+    </script>
+</body>
+</html>

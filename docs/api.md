@@ -7,25 +7,31 @@ gmedia.js API
 Functions:
 - [gmediajs.createPlayer()](#gmediajscreateplayer)
 - [gmediajs.isHttpFlvSupported()](#gmediajsishttpflvsupported)
+- [gmediajs.createTalker()](#gmediajscreatetalker)
+- [gmediajs.isTalkSupported()](#gmediajsistalksupported)
 
 Classes:
-- [gmediajs.HttpFlvPlayer](#gmediajshttpflvplayer)
+- [gmediajs.GPlayer](#gmediajsgplayer)
+- [gmediajs.GTalker](#gmediajsgtalker)
 
 Enums:
 - [gmediajs.GPlayerEvent](#gmediajsgplayerevent)
 - [gmediajs.GErrorType](#gmediajsgerrortype)
 - [gmediajs.GPlaybackControlStatus](#gmediajsgplaybackcontrolstatus)
-
+- [gmediajs.GTalkerEvent](#gmediajsgtalkerevent)
+- [gmediajs.GTalkerConnectStatus](#gmediajsgtalkerconnectstatus)
+- [gmediajs.GTalkerConnectErrorType](#gmediajsgtalkerconnecterrortype)
 
 
 
 ### gmediajs.createPlayer()
 ```js
-function createPlayer(url:string): GPlayer;
+function createPlayer(url:string, config:Object): GPlayer;
 ```
 
 参数:
     url:平台返回的播放地址
+    config:json对象，可不传，配置播放器可选项
 返回值:
     GPlayer对象，用于开始结束以及控制播放
 
@@ -37,15 +43,38 @@ function isHttpFlvSupported(): boolean;
 
 返回值:返回是否支持httpflv协议
 
-### interface GPlayer (abstract)
+
+### gmediajs.createTalker()
+```js
+function createTalker(downUrl:string, upUrl:string, imei:string, channel:string, config:Object): GTalker;
+```
+
+参数:
+    downUrl:平台推送设备音频到客户端的地址
+    upUrl:客户端上传音频的地址
+    imei:设备的唯一编号
+    channel:设备通道号
+    config:json对象，可不传，配置对讲器可选项
+返回值:
+    GTalker对象，用于开始或结束语音对讲
+
+
+### gmediajs.isTalkSupported()
+```js
+function isTalkSupported(): boolean;
+```
+
+返回值:返回是否支持语音对讲
+
+### gmediajs.GPlayer
 ```typescript
 interface GPlayer {
     constructor(): GPlayer;
+    on(event: string, listener: Function): void;
+    off(event: string): void;
     attachMediaElement(element: HTMLMediaElement): void;
     load(): void;
     destroy(): void;
-    on(event: string, listener: Function): void;
-    off(event: string): void;
     capture(): string;
     pause(): boolean;
     resume(): boolean; 
@@ -55,7 +84,28 @@ interface GPlayer {
 ```
 
 ```js
-var element = document.getElementsByName('videoElement')[0];
+player.on(gmediajs.GPlayerEvent.PLAYBACK_CONTROL_EVENT,(status, detail)=>{
+    console.log('status ' + status + ' ' + detail);
+});
+```
+功能:注册监听事件，目前一个事件类型仅支持一个回调函数，新的会覆盖旧的
+参数:
+    event:事件类型，值应该是gmediajs.GPlayerEvent枚举中的一个
+    listener:接受事件的回调函数，回调函数参数个数以及内容随事件类型变化
+返回值:
+    无
+
+```js
+player.off(gmediajs.GPlayerEvent.PLAYBACK_CONTROL_EVENT);
+```
+功能:注销监听事件
+参数:
+    event:事件类型，值应该是gmediajs.GPlayerEvent枚举中的一个
+返回值:
+    无
+
+```js
+var element = document.getElementsByName('idVideo')[0];
 player.attachMediaElement(element);
 ```
 功能:给播放器附加h5 video标签对象
@@ -79,27 +129,6 @@ player.destroy();
 功能:停止播放，并销毁所有占用的播放器资源
 参数:
     无
-返回值:
-    无
-
-```js
-player.on(gmediajs.GPlayerEvent.PLAYBACK_CONTROL_EVENT,(status, detail)=>{
-    console.log('status ' + status + ' ' + detail);
-});
-```
-功能:注册监听事件，目前一个事件类型仅支持一个回调函数，新的会覆盖旧的
-参数:
-    event:事件类型，值应该是gmediajs.GPlayerEvent枚举中的一个
-    listener:接受事件的回调函数，回调函数参数个数以及内容随事件类型变化
-返回值:
-    无
-
-```js
-player.off(gmediajs.GPlayerEvent.PLAYBACK_CONTROL_EVENT);
-```
-功能:注销监听事件
-参数:
-    event:事件类型，值应该是gmediajs.GPlayerEvent枚举中的一个
 返回值:
     无
 
@@ -183,3 +212,93 @@ gmediajs.GPlayerEvent.PLAYBACK_CONTROL_EVENT响应事件的响应类型，为回
 | SeekFail      | 跳转播放时间失败                                   |
 | SeekSuccess   | 跳转播放时间成功                                   |
 
+### gmediajs.GTalker
+```typescript
+interface GTalker {
+    constructor(): GTalker;
+    attachMediaElement(element: HTMLMediaElement): void;
+    load(): void;
+    destroy(): void;
+    on(event: string, listener: Function): void;
+    off(event: string): void;
+}
+```
+
+```js
+var element = document.getElementsByName('idAudio')[0];
+talker.attachMediaElement(element);
+```
+功能:给对讲器附加h5 audio标签对象用于播放音频
+参数:
+    element:h5 audio标签对象
+返回值:
+    无
+
+```js
+player.load();
+```
+功能:开始对讲,应该在调用attachMediaElement后使用
+参数:
+    无
+返回值:
+    无
+
+```js
+player.destroy();
+```
+功能:停止对讲，并销毁所有占用的对讲器资源
+参数:
+    无
+返回值:
+    无
+
+```js
+talker.on(gmediajs.GTalkerEvent.CONNECT_STATUS, (connect_status, connect_error_type)=>{
+    log("OnGTalkerEvent: " + connect_status + "  " + connect_error_type);
+});
+```
+功能:注册监听事件，目前一个事件类型仅支持一个回调函数，新的会覆盖旧的
+参数:
+    event:事件类型，值应该是gmediajs.GTalkerEvent枚举中的一个
+    listener:接受事件的回调函数，回调函数参数个数以及内容随事件类型变化
+返回值:
+    无
+
+```js
+player.off(gmediajs.GTalkerEvent.CONNECT_STATUS);
+```
+功能:注销监听事件
+参数:
+    event:事件类型，值应该是gmediajs.GTalkerEvent枚举中的一个
+返回值:
+    无
+
+### gmediajs.GTalkerEvent
+
+一系列对讲器事件的枚举，可以通过 `GTalker.on()` / `GTalker.off()` 注册/注销监听
+
+| Event                     | Description                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------- |
+| CONNECT_STATUS            | 语音对讲双防建立连接的状态，取值为GTalkerConnectStatus枚举                                         |
+
+### gmediajs.GTalkerConnectStatus
+
+gmediajs.GTalkerEvent.CONNECT_STATUS响应事件的状态类型，为回调函数第一个参数的值
+
+| type             | detail                                             |
+| ---------------- | -------------------------------------------------- |
+| ConnectSuccess   | 对讲双方建立连接成功                                |
+| ConnectError     | 对讲双方建立连接失败                                |
+
+### gmediajs.GTalkerConnectErrorType
+
+gmediajs.GTalkerEvent.CONNECT_STATUS响应事件的连接失败原因，为回调函数第二个参数的值
+
+| subtype                   | detail                                             |
+| ------------------------- | -------------------------------------------------- |
+| DeviceNotResponding       | 设备未响应语音对讲请求                             |
+| DeviceStopedResponding    | 设备已停止上传音频数据                             |
+| DownLinkFail              | 下行连接（客户端拉取设备音频连接）网络连接出错      |
+| UpLinkFail                | 上行连接（客户端上传音频连接）网络连接出错          |
+| WaitOpenMicrophoneTimeout | 等待用户允许打开麦克风超时（10秒）                  |
+| NotAllowOpenMicrophone    | 用户拒绝打开麦克风                                  |

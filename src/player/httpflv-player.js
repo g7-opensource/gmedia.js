@@ -43,6 +43,11 @@ export class HttpFlvPlayer extends GPlayer {
         };
     }
 
+    static isSupported() {
+        return window.MediaSource &&
+            window.MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01E,mp4a.40.2"');
+    }
+
     init (url, config) {
         this._checkConfig(config);
         this.isLive = this._checkIfLive(url);  
