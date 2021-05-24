@@ -1,11 +1,13 @@
 gmedia.js
 =========
 
-G7 H5流媒体处理库，包含实时视频，历史视频回放等。
-在封装flv.js hls.js等第三方开源H5播放库基础上根据G7平台接入设备特性做优化处理。
+G7 H5流媒体处理库，包含实时视频，历史视频回放，语音对讲等。
+在封装flv.js recoder.js第三方开源库基础上根据G7平台接入设备特性做优化完善,并支持了更丰富的功能。
 
 ## Demo
-See [index.html](demo/index.html)
+实时视频     See [realplay.html](demo/realplay.html)
+历史视频回放 See [playback_plan1.html](demo/playback_plan1.html)
+语音对讲     See [talk.html](demo/talk.html)
 
 ## API and Configuration
 See [api.md](docs/api.md)
@@ -18,7 +20,7 @@ npm install -g gulp  # install build tool
 gulp release         # packaged & minimized js will be emitted in dist folder
 ```
 
-## Getting Started
+## Quick Started
 
 ```html
 <script src="gmedia.min.js"></script>
