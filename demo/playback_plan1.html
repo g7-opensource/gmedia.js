@@ -30,6 +30,7 @@
                 <video name="idVideo" class="centeredVideo" autoplay>
                     Your browser is too old which doesn't support HTML5 video.
                 </video>
+                <label id="idLabel" class="centeredLabel" style="color: red;"></label>
             </div>
         </div>
 
@@ -56,12 +57,14 @@
 
     <script>
         const logToConsole = false;
+        var elLabel;           //显示播放状态控件
         var elLogbox;          //显示日志控件
         var elRange;           //进度条控件
         var elPlayTime;        //显示播放时间控件
         var elVideo;           //显示播放视频控件
 
         var player;            //gmediajs播放器对象
+        var helper;
 
         var imei;
         var channel;
@@ -74,10 +77,11 @@
         var isDroping = false; //是否正在拖动进度条
 
         function onLoad() {
+            elLabel = document.getElementById('idLabel');
             elLogbox = document.getElementsByName('idLogbox')[0];
             elRange = document.getElementById('idRange');
             elPlayTime = document.getElementById('idPlayTime');
-            elVideo = document.getElementsByName('idVideo')[0];
+            elVideo = document.getElementsByName('idVideo')[0];            
         }
 
         function onBtLoad() {
@@ -101,7 +105,19 @@
                     log("获取播放地址失败");
                 }
                 let url = json.data[0].flv_url;
-            
+                let helpUrl = json.data[0].helpUrl;
+
+                //显示播放请求状态
+                elLabel.innerText = "";
+                if (helper != null) {
+                    helper.destroy();
+                    helper = null;
+                }
+                helper = gmediajs.createHelper(helpUrl);
+                helper.on(gmediajs.GHelperEvent.MEDIA_STATE,(json)=>{
+                    logToTextbox(json.desc);
+                    showMediaState(json.detail);
+                });
 
                 let captureUrl;
                 if (player != null) {
@@ -144,6 +160,12 @@
         }
 
         function onBtDestroy() {
+            elLabel.innerText = "";
+            if (helper != null) {
+                helper.destroy();
+                helper = null;
+            }
+
             if (player != null) {
                 player.destroy();
                 player = null;
@@ -182,6 +204,24 @@
         function logToTextbox(str) {
             elLogbox.value = elLogbox.value + str + '\n';
             elLogbox.scrollTop = elLogbox.scrollHeight;
+        }
+
+        //建议显示最新3条播放状态
+        //建议额外添加当播放出画面后，过几秒隐藏掉状态信息显示，该Demo未添加此逻辑
+        //是否播放出画面可通过video标签loadeddata事件获取
+        function showMediaState(str) {
+            let strNew = "";
+
+            let arrOld = elLabel.innerText.split(/[\r\n]/);
+            if (arrOld.length >= 3) {
+                arrOld.splice(0,1);
+            }
+            for (let i=0; i<arrOld.length; ++i) {
+                strNew += arrOld[i] + "\r\n";
+            }
+            strNew += str;
+
+            elLabel.innerText = strNew;
         }
            
     </script>

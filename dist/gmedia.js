@@ -27758,11 +27758,15 @@ var _gplayerEvents = _dereq_('./player/gplayer-events');
 
 var _gtalkerEvents = _dereq_('./talker/gtalker-events');
 
+var _ghelperEvents = _dereq_('./helper/ghelper-events.js');
+
 var _gplayer = _dereq_('./player/gplayer.js');
 
 var _httpflvPlayer = _dereq_('./player/httpflv-player.js');
 
 var _httpflvTalker = _dereq_('./talker/httpflv-talker.js');
+
+var _ghelper = _dereq_('./helper/ghelper.js');
 
 function createPlayer(url) {
   var config = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
@@ -27780,6 +27784,12 @@ function createTalker(downUrl, upUrl, imei, channel) {
     return null;
   }
   return talker;
+}
+
+function createHelper(url) {
+  var helper = new _ghelper.GHelper();
+  helper.init(url);
+  return helper;
 }
 
 function isHttpFlvSupported() {
@@ -27806,14 +27816,108 @@ gmediajs.GTalkerEvent = _gtalkerEvents.GTalkerEvent;
 gmediajs.GTalkerConnectStatus = _gtalkerEvents.GTalkerConnectStatus;
 gmediajs.GTalkerConnectErrorType = _gtalkerEvents.GTalkerConnectErrorType;
 
+gmediajs.createHelper = createHelper;
+gmediajs.GHelper = _ghelper.GHelper;
+gmediajs.GHelperEvent = _ghelperEvents.GHelperEvent;
+
 exports.default = gmediajs;
 
-},{"./player/gplayer-events":9,"./player/gplayer.js":10,"./player/httpflv-player.js":11,"./talker/gtalker-events":12,"./talker/httpflv-talker.js":14}],8:[function(_dereq_,module,exports){
+},{"./helper/ghelper-events.js":8,"./helper/ghelper.js":9,"./player/gplayer-events":11,"./player/gplayer.js":12,"./player/httpflv-player.js":13,"./talker/gtalker-events":14,"./talker/httpflv-talker.js":16}],8:[function(_dereq_,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var GHelperEvent = exports.GHelperEvent = {
+    MEDIA_STATE: 'media_state'
+};
+
+},{}],9:[function(_dereq_,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.GHelper = undefined;
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _ghelperEvents = _dereq_("./ghelper-events.js");
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var GHelper = exports.GHelper = function () {
+    function GHelper() {
+        _classCallCheck(this, GHelper);
+
+        this.callMediaState = null;
+        this.connect = null;
+    }
+
+    _createClass(GHelper, [{
+        key: "init",
+        value: function init(url) {
+            this.connect = new WebSocket(url);
+            this.connect.onopen = this._onConnectOpen.bind(this);
+            this.connect.onmessage = this._onConnectMessage.bind(this);
+            this.connect.onclose = this._onConnectClose.bind(this);
+            this.connect.onerror = this._onConnectError.bind(this);
+        }
+    }, {
+        key: "on",
+        value: function on(event, call) {
+            if (event = _ghelperEvents.GHelperEvent.MEDIA_STATE) {
+                this.callMediaState = call;
+            }
+        }
+    }, {
+        key: "off",
+        value: function off(event) {
+            if (event = _ghelperEvents.GHelperEvent.MEDIA_STATE) {
+                this.callMediaState = null;
+            }
+        }
+    }, {
+        key: "destroy",
+        value: function destroy() {
+            this.callMediaState = null;
+
+            if (this.connect != null) {
+                this.connect.close();
+                this.connect = null;
+            }
+        }
+    }, {
+        key: "_onConnectOpen",
+        value: function _onConnectOpen() {
+            this.connect.send("consume");
+        }
+    }, {
+        key: "_onConnectMessage",
+        value: function _onConnectMessage(e) {
+            var str = e.data;
+            var json = JSON.parse(str);
+            if (this.callMediaState != null) {
+                this.callMediaState(json);
+            }
+        }
+    }, {
+        key: "_onConnectClose",
+        value: function _onConnectClose() {}
+    }, {
+        key: "_onConnectError",
+        value: function _onConnectError() {}
+    }]);
+
+    return GHelper;
+}();
+
+},{"./ghelper-events.js":8}],10:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = _dereq_('./gmedia.js').default;
 
-},{"./gmedia.js":7}],9:[function(_dereq_,module,exports){
+},{"./gmedia.js":7}],11:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -27839,7 +27943,7 @@ var GPlaybackControlStatus = exports.GPlaybackControlStatus = {
     SeekSuccess: 2
 };
 
-},{}],10:[function(_dereq_,module,exports){
+},{}],12:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -27898,7 +28002,7 @@ var GPlayer = exports.GPlayer = function () {
     return GPlayer;
 }();
 
-},{}],11:[function(_dereq_,module,exports){
+},{}],13:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -28307,7 +28411,7 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
     return HttpFlvPlayer;
 }(_gplayer.GPlayer);
 
-},{"./gplayer-events.js":9,"./gplayer.js":10,"flv-g7.js":1}],12:[function(_dereq_,module,exports){
+},{"./gplayer-events.js":11,"./gplayer.js":12,"flv-g7.js":1}],14:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -28331,7 +28435,7 @@ var GTalkerConnectErrorType = exports.GTalkerConnectErrorType = {
     NotAllowOpenMicrophone: 'NotAllowOpenMicrophone'
 };
 
-},{}],13:[function(_dereq_,module,exports){
+},{}],15:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -28372,7 +28476,7 @@ var GTalker = exports.GTalker = function () {
     return GTalker;
 }();
 
-},{}],14:[function(_dereq_,module,exports){
+},{}],16:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -28749,7 +28853,7 @@ var HttpFlvTalker = exports.HttpFlvTalker = function (_GTalker) {
     return HttpFlvTalker;
 }(_gtalker.GTalker);
 
-},{"../common/bytearray.js":5,"../common/util.js":6,"./gtalker-events.js":12,"./gtalker.js":13,"flv-g7.js":1,"recorder-core":4,"recorder-core/src/engine/mp3":3,"recorder-core/src/engine/mp3-engine":2}]},{},[8])(8)
+},{"../common/bytearray.js":5,"../common/util.js":6,"./gtalker-events.js":14,"./gtalker.js":15,"flv-g7.js":1,"recorder-core":4,"recorder-core/src/engine/mp3":3,"recorder-core/src/engine/mp3-engine":2}]},{},[10])(10)
 });
 
 //# sourceMappingURL=gmedia.js.map
