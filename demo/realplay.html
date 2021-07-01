@@ -87,7 +87,7 @@
                 helper = gmediajs.createHelper(helpUrl);
                 helper.on(gmediajs.GHelperEvent.MEDIA_STATE,(json)=>{
                     logToTextbox(json.detail);
-                    showMediaState(json.desc);
+                    showMediaState(json.desc+json.state.toString());
                 });
 
                 if (player != null) {

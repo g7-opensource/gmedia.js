@@ -115,8 +115,8 @@
                 }
                 helper = gmediajs.createHelper(helpUrl);
                 helper.on(gmediajs.GHelperEvent.MEDIA_STATE,(json)=>{
-                    logToTextbox(json.desc);
-                    showMediaState(json.detail);
+                    logToTextbox(json.detail);
+                    showMediaState(json.desc+json.state.toString());
                 });
 
                 let captureUrl;
