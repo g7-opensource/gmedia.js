@@ -9,10 +9,12 @@ Functions:
 - [gmediajs.isHttpFlvSupported()](#gmediajsishttpflvsupported)
 - [gmediajs.createTalker()](#gmediajscreatetalker)
 - [gmediajs.isTalkSupported()](#gmediajsistalksupported)
+- [gmediajs.createHelper()](#gmediajscreatehelper)
 
 Classes:
 - [gmediajs.GPlayer](#gmediajsgplayer)
 - [gmediajs.GTalker](#gmediajsgtalker)
+- [gmediajs.GHelper](#gmediajsghelper)
 
 Enums:
 - [gmediajs.GPlayerEvent](#gmediajsgplayerevent)
@@ -21,7 +23,7 @@ Enums:
 - [gmediajs.GTalkerEvent](#gmediajsgtalkerevent)
 - [gmediajs.GTalkerConnectStatus](#gmediajsgtalkerconnectstatus)
 - [gmediajs.GTalkerConnectErrorType](#gmediajsgtalkerconnecterrortype)
-
+- [gmediajs.GHelperEvent](#gmediajsghelperevent)
 
 
 ### gmediajs.createPlayer()
@@ -65,6 +67,17 @@ function isTalkSupported(): boolean;
 ```
 
 返回值:返回是否支持语音对讲
+
+### gmediajs.createHelper()
+```js
+function createHelper(helpUrl:string, config:Object): GHelper;
+```
+
+参数:
+    helpUrl:平台推送设备音频到客户端的地址
+    config:json对象，可不传，配置助手可选项
+返回值:
+    GHelper对象，用于获取流媒体播放状态等
 
 ### gmediajs.GPlayer
 ```typescript
@@ -235,7 +248,7 @@ talker.attachMediaElement(element);
     无
 
 ```js
-player.load();
+talker.load();
 ```
 功能:开始对讲,应该在调用attachMediaElement后使用
 参数:
@@ -244,7 +257,7 @@ player.load();
     无
 
 ```js
-player.destroy();
+talker.destroy();
 ```
 功能:停止对讲，并销毁所有占用的对讲器资源
 参数:
@@ -265,7 +278,7 @@ talker.on(gmediajs.GTalkerEvent.CONNECT_STATUS, (connect_status, connect_error_t
     无
 
 ```js
-player.off(gmediajs.GTalkerEvent.CONNECT_STATUS);
+talker.off(gmediajs.GTalkerEvent.CONNECT_STATUS);
 ```
 功能:注销监听事件
 参数:
@@ -302,3 +315,71 @@ gmediajs.GTalkerEvent.CONNECT_STATUS响应事件的连接失败原因，为回�
 | UpLinkFail                | 上行连接（客户端上传音频连接）网络连接出错          |
 | WaitOpenMicrophoneTimeout | 等待用户允许打开麦克风超时（10秒）                  |
 | NotAllowOpenMicrophone    | 用户拒绝打开麦克风                                  |
+
+### gmediajs.GHelper
+```typescript
+interface GHelper {
+    constructor(): GHelper;
+    destroy(): void;
+    on(event: string, listener: Function): void;
+    off(event: string): void;
+}
+```
+
+```js
+helper.destroy();
+```
+功能:销毁助手
+参数:
+    无
+返回值:
+    无
+
+```js
+helper.on(gmediajs.GHelperEvent.MEDIA_STATE,(json)=>{
+    consol.log(json.state);     //状态码
+    consol.log(json.desc);      //状态描述
+    consol.log(json.detail);    //状态详情
+});
+```
+功能:注册监听事件，目前一个事件类型仅支持一个回调函数，新的会覆盖旧的
+参数:
+    event:事件类型，值应该是gmediajs.GHelperEvent枚举中的一个
+    listener:接受事件的回调函数，回调函数参数个数以及内容随事件类型变化
+返回值:
+    无
+
+```js
+helper.off(gmediajs.GHelperEvent.MEDIA_STATE);
+```
+功能:注销监听事件
+参数:
+    event:事件类型，值应该是gmediajs.GHelperEvent枚举中的一个
+返回值:
+    无
+
+### gmediajs.GHelperEvent
+
+一系列助手事件的枚举，可以通过 `GHelper.on()` / `GHelper.off()` 注册/注销监听
+
+| Event                     | Description                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------- |
+| MEDIA_STATE               | 获取流媒体播放状态信息，比如设备响应情况，有无推流等                                               |
+
+### gmediajs.GHelperEvent.MEDIA_STATE
+
+流媒体播放状态，回调数据为json结构，含state desc detail 三个属性，详情如下
+
+|状态值state     |描述desc                         |详情detail                                                                  |
+| ---------------|---------------------------------|--------------------------------------------------------------------------- |
+|0               |等待设备回应                     |等待设备回应                                                                 |
+|1               |设备超时未回应请求               |设备超过8秒未回应请求                                                        |
+|2               |设备回应请求不支持               |设备回应请求不支持                                                           |
+|3               |设备回应请求参数错误             |设备回应请求参数错误，请检查通道号等是否错误                                  |
+|4               |设备回应当前不能响应请求         |设备回应当前不能响应请求，请检查设备是否休眠                                  |
+|5               |设备回应没有该通道这段时间的录像 |设备回应没有该通道这段时间的录像                                              |
+|6               |设备回应请求成功                 |设备回应请求成功                                                              |
+|7               |设备超时未推流                   |设备超过8秒未推流                                                             |
+|8               |收到视频流                       |收到视频流                                                                    |
+|9               |收到音频流                       |收到音频流                                                                    |
+|10              |播放已结束                       |播放已结束                                                                    |
