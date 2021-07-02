@@ -35,14 +35,17 @@ export class GHelper {
     }
 
     _onConnectOpen() {
-        
+        this._sendConsumeMediaStateCmd();
     }
 
     _onConnectMessage(e) {
-        let str = e.data;
-        let json = JSON.parse(str);
-        if (this.callMediaState != null) {
-            this.callMediaState(json);
+        let head = JSON.parse(e.data);
+        if (head == null || head.type == null) {
+            return;
+        }
+
+        if (head.type == "mediastate" && this.callMediaState != null) {
+            this.callMediaState(head.data);
         }
     }
 
@@ -52,5 +55,17 @@ export class GHelper {
 
     _onConnectError() {
         
+    }
+
+    _sendConsumeMediaStateCmd() {
+        let head = {}
+        head["cmd"] = "consume";
+        head["type"] = "mediastate";
+        head["id"] = "";
+        head["data"] = {};
+
+        let msg = JSON.stringify(head);
+
+        this.connect.send(msg);
     }
 }

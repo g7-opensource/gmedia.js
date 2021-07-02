@@ -27890,15 +27890,18 @@ var GHelper = exports.GHelper = function () {
     }, {
         key: "_onConnectOpen",
         value: function _onConnectOpen() {
-            this.connect.send("consume");
+            this._sendConsumeMediaStateCmd();
         }
     }, {
         key: "_onConnectMessage",
         value: function _onConnectMessage(e) {
-            var str = e.data;
-            var json = JSON.parse(str);
-            if (this.callMediaState != null) {
-                this.callMediaState(json);
+            var head = JSON.parse(e.data);
+            if (head == null || head.type == null) {
+                return;
+            }
+
+            if (head.type == "mediastate" && this.callMediaState != null) {
+                this.callMediaState(head.data);
             }
         }
     }, {
@@ -27907,6 +27910,19 @@ var GHelper = exports.GHelper = function () {
     }, {
         key: "_onConnectError",
         value: function _onConnectError() {}
+    }, {
+        key: "_sendConsumeMediaStateCmd",
+        value: function _sendConsumeMediaStateCmd() {
+            var head = {};
+            head["cmd"] = "consume";
+            head["type"] = "mediastate";
+            head["id"] = "";
+            head["data"] = {};
+
+            var msg = JSON.stringify(head);
+
+            this.connect.send(msg);
+        }
     }]);
 
     return GHelper;
