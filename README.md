@@ -1,13 +1,14 @@
 gmedia.js
 =========
 
-G7 H5流媒体处理库，包含实时视频，历史视频回放，语音对讲等。
+G7 H5流媒体处理库，支持实时视频，历史视频回放，语音对讲，获取流媒体播放状态等。
 在封装flv.js recoder.js第三方开源库基础上根据G7平台接入设备特性做优化完善,并支持了更丰富的功能。
 
 ## Demo
-实时视频     See [realplay.html](demo/realplay.html)
-历史视频回放 See [playback_plan1.html](demo/playback_plan1.html)
-语音对讲     See [talk.html](demo/talk.html)
+实时视频            See [realplay.html](demo/realplay.html)
+历史视频回放        See [playback_plan1.html](demo/playback_plan1.html)
+语音对讲            See [talk.html](demo/talk.html)
+流媒体播放状态展示  See [realplay.html](demo/realplay.html) [playback_plan1.html](demo/playback_plan1.html)
 
 ## API and Configuration
 See [api.md](docs/api.md)
