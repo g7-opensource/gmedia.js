@@ -58,12 +58,14 @@
         var player;            //gmediajs播放器对象
         var helper;
 
+        //初始化
         function onLoad() {
             elLabel = document.getElementById('idLabel');
             elLogbox = document.getElementsByName('idLogbox')[0];
             elVideo = document.getElementsByName('idVideo')[0];
         }
         
+        //从测试环境获取播放串并开始播放
         function onBtLoad() {
             //显示播放请求状态
             elLabel.innerText = "";
@@ -107,30 +109,33 @@
             });
         }
 
+        //暂停
         function onBtPause() {
             if (player != null) {
                 player.pause();
             }
         }
 
+        //从暂停中恢复播放
         function onBtResume() {
             if (player != null) {
                 player.resume();
             }
         }
 
+        //跳转到最新的缓存时间
+        //当暂停后只是播放画面暂停，视频流依然在从平台推送过来
+        //当恢复播放后，是从暂停那一刻开始播放，暂停了多少时间就相当于延迟了多少时间
+        //因此可用此接口在恢复播放后跳转到最新的时间
         function onBtSeekToNewesetTime() {
             if (player != null) {
                 player.seekToNewestTime();
             }
         }
 
+        //销毁播放器
         function onBtDestroy() {
             elLabel.innerText = "";
-            if (helper != null) {
-                helper.destroy();
-                helper = null;
-            }
 
             if (player != null) {
                 player.destroy();
