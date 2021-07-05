@@ -65,6 +65,9 @@
         }
         
         function onBtLoad() {
+            //显示播放请求状态
+            elLabel.innerText = "";
+
             let imei = document.getElementById('idImei').value;
             let channel = document.getElementById('idChannel').value;
             let streamType = document.getElementById('idStreamType').checked ? 0 : 1;
@@ -78,23 +81,12 @@
                 let url = json.data[0].flv_url;
                 let helpUrl = json.data[0].helpUrl;
             
-                //显示播放请求状态
-                elLabel.innerText = "";
-                if (helper != null) {
-                    helper.destroy();
-                    helper = null;
-                }
-                helper = gmediajs.createHelper(helpUrl);
-                helper.on(gmediajs.GHelperEvent.MEDIA_STATE,(json)=>{
-                    logToTextbox(json.detail);
-                    showMediaState(json.desc+json.state.toString());
-                });
 
                 if (player != null) {
                     player.destroy();
                     player = null;
                 }   
-                player = gmediajs.createPlayer(url);
+                player = gmediajs.createPlayer(url, {helpUrl: helpUrl});
                 player.on(gmediajs.GPlayerEvent.ERROR,(type, subtype, detail)=>{
                     log('error ' + type + ' ' + subtype + ' ' + detail);
                 });
@@ -105,6 +97,10 @@
                     let speed = Number(info.speed)
                     speed = Math.ceil(speed);
                     //console.log(speed+ 'kB/s');
+                });
+                player.on(gmediajs.GPlayerEvent.MEDIA_STATE,(info)=>{
+                    logToTextbox(info.detail);
+                    showMediaState(info.desc + info.state.toString());
                 });
                 player.attachMediaElement(elVideo);
                 player.load();

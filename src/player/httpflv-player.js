@@ -2,6 +2,9 @@ import {GPlayerEvent, GErrorType, GPlaybackControlStatus} from "./gplayer-events
 import {GPlayer} from "./gplayer.js"
 import flvjs from "flv-g7.js";
 
+import {GHelperEvent} from "../helper/ghelper-events.js";
+import { GHelper } from "../helper/ghelper.js";
+
 const PlaybackKey = "g7-flv-video-playback";
 
 const PlaybackControl = {
@@ -20,6 +23,9 @@ export class HttpFlvPlayer extends GPlayer {
         this.element = null;
         this.isLive = true;
 
+        this.helpUrl = null;
+        this.helper = null;
+
         this.playbackPlan = 1;
         this.playbackControl = PlaybackControl.None;
 
@@ -34,6 +40,7 @@ export class HttpFlvPlayer extends GPlayer {
         this.callbackStatistics = null;
         this.callbackError = null;
         this.callbackMediaSourceEnd = null;
+        this.callbackMediaState = null;
         this.callbackPlaybackControlEvent = null;
 
         this.checkerSeek = null;
@@ -78,6 +85,9 @@ export class HttpFlvPlayer extends GPlayer {
         else if (event === GPlayerEvent.MEDIA_SOURCE_END) {
             this.callbackMediaSourceEnd = call;
         }
+        else if (event === GPlayerEvent.MEDIA_STATE) {
+            this.callbackMediaState = call;
+        }
         else if (event === GPlayerEvent.PLAYBACK_CONTROL_EVENT) {
             this.callbackPlaybackControlEvent = call;
         }
@@ -96,6 +106,9 @@ export class HttpFlvPlayer extends GPlayer {
         else if (event === GPlayerEvent.MEDIA_SOURCE_END) {
             this.callbackMediaSourceEnd = null;
         }
+        else if (event === GPlayerEvent.MEDIA_STATE) {
+            this.callbackMediaState = null;
+        }
         else if (event === GPlayerEvent.PLAYBACK_CONTROL_EVENT) {
             this.callbackPlaybackControlEvent = null;
         }
@@ -108,6 +121,12 @@ export class HttpFlvPlayer extends GPlayer {
     }
 
     load() {
+        if (this.helpUrl != null) {
+            this.helper = new GHelper();
+            this.helper.init(this.helpUrl);
+            this.helper.on(GHelperEvent.MEDIA_STATE,this._onMediaState.bind(this));
+        }
+
         this.player.load();
     }
 
@@ -169,6 +188,10 @@ export class HttpFlvPlayer extends GPlayer {
     }
 
     destroy() {
+        if (this.helper != null) {
+            this.helper.destroy();
+        }
+
         if (this.player != null) {
             this.player.pause();
             this.player.unload();
@@ -190,6 +213,10 @@ export class HttpFlvPlayer extends GPlayer {
 
         if (config.playbackPlan != null) {
             this.playbackPlan = config.playbackPlan;
+        }
+
+        if (config.helpUrl != null) {
+            this.helpUrl = config.helpUrl;
         }
     }
 
@@ -288,6 +315,12 @@ export class HttpFlvPlayer extends GPlayer {
                     "切换播放时间成功");
             }
         },1000);
+    }
+
+    _onMediaState(info) {
+        if (this.callbackMediaState != null) {
+            this.callbackMediaState(info);
+        }
     }
 
     _onStatisticsInfo(data) {

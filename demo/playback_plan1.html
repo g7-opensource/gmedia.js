@@ -98,6 +98,9 @@
         }
 
         function startPlayback(imei, channel, strStart, strEnd) {
+            //显示播放请求状态
+            elLabel.innerText = "";
+
             getPlaybackUrl(imei, channel, strStart, strEnd,(requestUrl,bOk, data)=>{
                 let json = {};
                 if (!bOk || (json = JSON.parse(data)).data.lenght == 0)
@@ -106,18 +109,6 @@
                 }
                 let url = json.data[0].flv_url;
                 let helpUrl = json.data[0].helpUrl;
-
-                //显示播放请求状态
-                elLabel.innerText = "";
-                if (helper != null) {
-                    helper.destroy();
-                    helper = null;
-                }
-                helper = gmediajs.createHelper(helpUrl);
-                helper.on(gmediajs.GHelperEvent.MEDIA_STATE,(json)=>{
-                    logToTextbox(json.detail);
-                    showMediaState(json.desc+json.state.toString());
-                });
 
                 let captureUrl;
                 if (player != null) {
@@ -141,6 +132,10 @@
                     let nCurPlayTime = time*1000 + nSeekTime;
                     elRange.value = (nCurPlayTime / (nEnd - nStart))*100;
                     elPlayTime.value = getYMDHMS(nCurPlayTime + nStart);
+                });
+                player.on(gmediajs.GPlayerEvent.MEDIA_STATE,(info)=>{
+                    logToTextbox(info.detail);
+                    showMediaState(info.desc + info.state.toString());
                 });
                 player.attachMediaElement(elVideo);
                 player.load();

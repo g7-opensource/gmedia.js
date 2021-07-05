@@ -1,10 +1,10 @@
 import {GPlayerEvent, GErrorType, GPlaybackControlStatus} from './player/gplayer-events';
 import {GTalkerEvent, GTalkerConnectStatus, GTalkerConnectErrorType} from './talker/gtalker-events';
-import {GHelperEvent} from "./helper/ghelper-events.js"
+import {GHelperEvent} from "./helper/ghelper-events.js";
 import {GPlayer} from './player/gplayer.js';
 import { HttpFlvPlayer } from './player/httpflv-player.js';
 import { HttpFlvTalker } from './talker/httpflv-talker.js';
-import { GHelper } from "./helper/ghelper.js"
+import { GHelper } from "./helper/ghelper.js";
 
 function createPlayer(url, config = null) {
   let player = new HttpFlvPlayer();

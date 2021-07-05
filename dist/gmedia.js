@@ -27944,6 +27944,7 @@ var GPlayerEvent = exports.GPlayerEvent = {
     MEDIA_SOURCE_END: 'media_source_end',
     TIMEUPDATE: 'timeupdate',
     STATISTICS_INFO: 'statistics_info',
+    MEDIA_STATE: 'media_state',
     PLAYBACK_CONTROL_EVENT: 'playback_control_event'
 };
 
@@ -28036,6 +28037,10 @@ var _flvG = _dereq_("flv-g7.js");
 
 var _flvG2 = _interopRequireDefault(_flvG);
 
+var _ghelperEvents = _dereq_("../helper/ghelper-events.js");
+
+var _ghelper = _dereq_("../helper/ghelper.js");
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -28066,6 +28071,9 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
         _this.element = null;
         _this.isLive = true;
 
+        _this.helpUrl = null;
+        _this.helper = null;
+
         _this.playbackPlan = 1;
         _this.playbackControl = PlaybackControl.None;
 
@@ -28080,6 +28088,7 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
         _this.callbackStatistics = null;
         _this.callbackError = null;
         _this.callbackMediaSourceEnd = null;
+        _this.callbackMediaState = null;
         _this.callbackPlaybackControlEvent = null;
 
         _this.checkerSeek = null;
@@ -28119,6 +28128,8 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
                 this.callbackError = call;
             } else if (event === _gplayerEvents.GPlayerEvent.MEDIA_SOURCE_END) {
                 this.callbackMediaSourceEnd = call;
+            } else if (event === _gplayerEvents.GPlayerEvent.MEDIA_STATE) {
+                this.callbackMediaState = call;
             } else if (event === _gplayerEvents.GPlayerEvent.PLAYBACK_CONTROL_EVENT) {
                 this.callbackPlaybackControlEvent = call;
             }
@@ -28134,6 +28145,8 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
                 this.callbackError = null;
             } else if (event === _gplayerEvents.GPlayerEvent.MEDIA_SOURCE_END) {
                 this.callbackMediaSourceEnd = null;
+            } else if (event === _gplayerEvents.GPlayerEvent.MEDIA_STATE) {
+                this.callbackMediaState = null;
             } else if (event === _gplayerEvents.GPlayerEvent.PLAYBACK_CONTROL_EVENT) {
                 this.callbackPlaybackControlEvent = null;
             }
@@ -28148,6 +28161,12 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
     }, {
         key: "load",
         value: function load() {
+            if (this.helpUrl != null) {
+                this.helper = new _ghelper.GHelper();
+                this.helper.init(this.helpUrl);
+                this.helper.on(_ghelperEvents.GHelperEvent.MEDIA_STATE, this._onMediaState.bind(this));
+            }
+
             this.player.load();
         }
     }, {
@@ -28214,6 +28233,10 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
     }, {
         key: "destroy",
         value: function destroy() {
+            if (this.helper != null) {
+                this.helper.destroy();
+            }
+
             if (this.player != null) {
                 this.player.pause();
                 this.player.unload();
@@ -28236,6 +28259,10 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
 
             if (config.playbackPlan != null) {
                 this.playbackPlan = config.playbackPlan;
+            }
+
+            if (config.helpUrl != null) {
+                this.helpUrl = config.helpUrl;
             }
         }
     }, {
@@ -28340,6 +28367,13 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
             }, 1000);
         }
     }, {
+        key: "_onMediaState",
+        value: function _onMediaState(info) {
+            if (this.callbackMediaState != null) {
+                this.callbackMediaState(info);
+            }
+        }
+    }, {
         key: "_onStatisticsInfo",
         value: function _onStatisticsInfo(data) {
             if (this.callbackStatistics != null) {
@@ -28427,7 +28461,7 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
     return HttpFlvPlayer;
 }(_gplayer.GPlayer);
 
-},{"./gplayer-events.js":11,"./gplayer.js":12,"flv-g7.js":1}],14:[function(_dereq_,module,exports){
+},{"../helper/ghelper-events.js":8,"../helper/ghelper.js":9,"./gplayer-events.js":11,"./gplayer.js":12,"flv-g7.js":1}],14:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {

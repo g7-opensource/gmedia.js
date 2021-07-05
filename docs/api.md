@@ -28,7 +28,7 @@ Enums:
 
 ### gmediajs.createPlayer()
 ```js
-function createPlayer(url:string, config:Object): GPlayer;
+function createPlayer(url:string, config?: Config): GPlayer;
 ```
 
 参数:
@@ -37,6 +37,11 @@ function createPlayer(url:string, config:Object): GPlayer;
 返回值:
     GPlayer对象，用于开始结束以及控制播放
 
+### Config
+| Field               | Type        | Default   | Description                                                   |
+| ------------------- | ----------- | --------- | ------------------------------------------------------------  |
+| playbackPlan        | `number`    | 1         | 回放方案:1.跳转进度用重新播放 2.跳转进度用手动计算;推荐1       |
+| helpUrl             | `string`    | null      | 辅助连接，如有设置可通过GPlayerEvent.MEDIA_STATE获取播放状态   |
 
 ### gmediajs.isHttpFlvSupported()
 ```js
@@ -202,7 +207,8 @@ let bRes = player.seek(time);
 | ERROR                     | 播放器出现不可恢复错误。包含网络连接出错，音视频解码渲染出错。网络连接出错发生在还未正常播放过表示平台未收到设备推流，发生在正常播放过程中表示客户端和流媒体平台网络连接出错|
 | MEDIA_SOURCE_END          | 平台推流结束事件。有过正常推流然后结束了推流才会触发。可能推流速度比播放速度快，因此并不表示播放结束|
 | TIMEUPDATE                | 当前播放时间更新事件，可用于实时视频和历史视频回放显示当前播放时间                                 |
-| STATISTICS_INFO           | 统计信息更新事件，可用于获取网络流量，如需其他信息可以提要求                                        |
+| STATISTICS_INFO           | 统计信息更新事件，可用于获取网络流量，如需其他信息可以提要求                                       |
+| MEDIA_STATE               | 流媒体播放状态，回调内容详见[gmediajs.GHelperEvent.MEDIA_STATE](#gmediajsghelpereventmediastate)       |
 | PLAYBACK_CONTROL_EVENT    | 历史视频回放控制命令响应情况事件，可用于获取响应开始，响应中，响应成功，响应失败的信息              | 
 
 ### gmediajs.GErrorType
