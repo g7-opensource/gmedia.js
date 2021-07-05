@@ -56,7 +56,6 @@
         var elLogbox;          //显示日志控件
         var elVideo;           //显示播放视频控件
         var player;            //gmediajs播放器对象
-        var helper;
 
         //初始化
         function onLoad() {
@@ -65,15 +64,20 @@
             elVideo = document.getElementsByName('idVideo')[0];
         }
         
-        //从测试环境获取播放串并开始播放
         function onBtLoad() {
-            //显示播放请求状态
-            elLabel.innerText = "";
-
             let imei = document.getElementById('idImei').value;
             let channel = document.getElementById('idChannel').value;
             let streamType = document.getElementById('idStreamType').checked ? 0 : 1;
             let avitemType = document.getElementById('idAvitemType').checked ? 0 : 1;
+
+            //应该在获取新的播放串前回收掉资源
+            elLabel.innerText = "";
+            if (player != null) {
+                player.destroy();
+                player = null;
+            }  
+
+            //从测试环境获取播放串并开始播放
             getRealplayUrl(imei,channel,avitemType,streamType,(requestUrl,bOk, data)=>{
                 let json = {};
                 if (!bOk || (json = JSON.parse(data)).data.lenght == 0)
@@ -82,12 +86,7 @@
                 }
                 let url = json.data[0].flv_url;
                 let helpUrl = json.data[0].helpUrl;
-            
-
-                if (player != null) {
-                    player.destroy();
-                    player = null;
-                }   
+             
                 player = gmediajs.createPlayer(url, {helpUrl: helpUrl});
                 player.on(gmediajs.GPlayerEvent.ERROR,(type, subtype, detail)=>{
                     log('error ' + type + ' ' + subtype + ' ' + detail);

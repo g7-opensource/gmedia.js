@@ -18,9 +18,9 @@
                     <label for="idChannel">channel:</label>
                     <input id="idChannel" type="text" value="1" />
                     <label for="idStart">开始时间:</label>
-                    <input id="idStart" type="text" value="2021-05-19 09:10:00" />
+                    <input id="idStart" type="text" value="2021-07-05 09:10:00" />
                     <label for="idEnd">结束时间:</label>
-                    <input id="idEnd" type="text" value="2021-05-19 09:25:00" />
+                    <input id="idEnd" type="text" value="2021-07-05 09:25:00" />
                 </div>
             </div>
         </div>
@@ -64,7 +64,6 @@
         var elVideo;           //显示播放视频控件
 
         var player;            //gmediajs播放器对象
-        var helper;
 
         var imei;
         var channel;
@@ -100,9 +99,20 @@
         }
 
         function startPlayback(imei, channel, strStart, strEnd) {
-            //显示播放请求状态
+            //应该在获取新的播放串前回收掉资源
             elLabel.innerText = "";
+            let captureUrl;
+            if (player != null) {
+                //在播放器销毁前截张最后的视频画面
+                captureUrl = player.capture();
+                //销毁播放器
+                player.destroy();
+                player = null;
+            }
+            //将截图赋值给video标签预显示画面，这样避免了切换期间白屏
+            elVideo.poster = captureUrl;
 
+            //从测试环境获取播放串并开始播放
             getPlaybackUrl(imei, channel, strStart, strEnd,(requestUrl,bOk, data)=>{
                 let json = {};
                 if (!bOk || (json = JSON.parse(data)).data.lenght == 0)
@@ -111,19 +121,8 @@
                 }
                 let url = json.data[0].flv_url;
                 let helpUrl = json.data[0].helpUrl;
-
-                let captureUrl;
-                if (player != null) {
-                    //在播放器销毁前截张最后的视频画面
-                    captureUrl = player.capture();
-                    //销毁播放器
-                    player.destroy();
-                    player = null;
-                }
     
-                //将截图赋值给video标签预显示画面，这样避免了切换期间白屏
-                elVideo.poster = captureUrl;
-                player = gmediajs.createPlayer(url);
+                player = gmediajs.createPlayer(url, {helpUrl:helpUrl});
                 player.on(gmediajs.GPlayerEvent.TIMEUPDATE,(time)=>{
                     if (isDroping) { 
                         //如果正在拖拽进度条，暂时先不更新进度和时间
