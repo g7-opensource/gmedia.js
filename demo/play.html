@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <title>gmediajs demo</title>
+    <link rel="stylesheet" type="text/css" href="demo.css" />
+</head>
+
+<body onload="onLoad()">
+    
+    <div class="mainContainer">
+        <div>
+            <div id="streamURL">
+                <div class="url-input">
+                    <label for="idUrl">url:</label>
+                    <input id="idUrl" type="text" value="" />
+                </div>
+            </div>
+        </div>
+
+        <div class="video-container">
+            <div>
+                <video name="idVideo" class="centeredVideo" autoplay>
+                    Your browser is too old which doesn't support HTML5 video.
+                </video>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="onBtLoad()">Load</button>
+            <button onclick="onBtDestroy()">Destroy</button>
+            <button onclick="onBtPause()">暂停</button>
+            <button onclick="onBtResume()">恢复播放</button>
+            <button onclick="onBtSeekToNewesetTime()">跳转到最新时间</button>
+        </div>
+        <textarea name="idLogbox" class="logcatBox" rows="10" readonly></textarea>
+    </div>
+
+    <script src="../dist/gmedia.js"></script>
+
+    <script>
+        const logToConsole = false;
+        var elLogbox;          //显示日志控件
+        var elVideo;           //显示播放视频控件
+        var player;            //gmediajs播放器对象
+
+        //初始化
+        function onLoad() {
+            elLogbox = document.getElementsByName('idLogbox')[0];
+            elVideo = document.getElementsByName('idVideo')[0];
+        }
+        
+        function onBtLoad() {
+            let url = document.getElementById('idUrl').value;
+
+            if (player != null) {
+                player.destroy();
+                player = null;
+            }  
+
+            player = gmediajs.createPlayer(url);
+            player.on(gmediajs.GPlayerEvent.ERROR,(type, subtype, detail)=>{
+                log('error ' + type + ' ' + subtype + ' ' + detail);
+            });
+            player.on(gmediajs.GPlayerEvent.MEDIA_SOURCE_END,()=>{
+                log('media_source_end ');
+            });
+            player.on(gmediajs.GPlayerEvent.STATISTICS_INFO,(info)=>{
+                let speed = Number(info.speed)
+                speed = Math.ceil(speed);
+                //console.log(speed+ 'kB/s');
+            });
+            player.attachMediaElement(elVideo);
+            player.load();
+        }
+
+        //暂停
+        function onBtPause() {
+            if (player != null) {
+                player.pause();
+            }
+        }
+
+        //从暂停中恢复播放
+        function onBtResume() {
+            if (player != null) {
+                player.resume();
+            }
+        }
+
+        //跳转到最新的缓存时间
+        //当暂停后只是播放画面暂停，视频流依然在从平台推送过来
+        //当恢复播放后，是从暂停那一刻开始播放，暂停了多少时间就相当于延迟了多少时间
+        //因此可用此接口在恢复播放后跳转到最新的时间
+        function onBtSeekToNewesetTime() {
+            if (player != null) {
+                player.seekToNewestTime();
+            }
+        }
+
+        //销毁播放器
+        function onBtDestroy() {
+            elLabel.innerText = "";
+
+            if (player != null) {
+                player.destroy();
+                player = null;
+            }
+        }
+
+        function log(str) {
+            if (logToConsole) {
+                console.log(str);
+            }
+            else {
+                logToTextbox(str);
+            }
+        }
+
+        function logToTextbox(str) {
+            elLogbox.value = elLogbox.value + str + '\n';
+            elLogbox.scrollTop = elLogbox.scrollHeight;
+        }
+           
+    </script>
+</body>
+</html>

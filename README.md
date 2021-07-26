@@ -9,6 +9,7 @@ G7 H5流媒体处理库，支持实时视频，历史视频回放，语音对讲
 历史视频回放        See [playback_plan1.html](demo/playback_plan1.html)
 语音对讲            See [talk.html](demo/talk.html)
 流媒体播放状态展示  See [realplay.html](demo/realplay.html) [playback_plan1.html](demo/playback_plan1.html)
+直接使用已有Url播放 See [play.html](demo/play.html) 
 
 ## API and Configuration
 See [api.md](docs/api.md)
