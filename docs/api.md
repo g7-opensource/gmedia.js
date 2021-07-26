@@ -98,6 +98,7 @@ interface GPlayer {
     resume(): boolean; 
     seekToNewestTime(): void;
     seek(time:int): boolean; 
+    setPlaySpeed(speed:int): void;
 }
 ```
 
@@ -197,6 +198,14 @@ let bRes = player.seek(time);
 返回值:
     bool，true:需要调用后台跳转播放接口，false:不需要调用后台跳转播放接口
 
+```js
+player.setPlaySpeed(speed);
+```
+功能:设置播放器播放倍速
+参数:
+    speed:速度，整数类型；历史视频回放切换到倍速播放时，应先调用平台接口再设置倍速
+返回值:
+    无
 
 ### gmediajs.GPlayerEvent
 

@@ -14,20 +14,20 @@
             <div id="streamURL">
                 <div class="url-input">
                     <label for="idImei">imei:</label>
-                    <input id="idImei" type="text" value="106064891800618" />
+                    <input id="idImei" type="text" value="119529040287977" />
                     <label for="idChannel">channel:</label>
                     <input id="idChannel" type="text" value="1" />
                     <label for="idStart">开始时间:</label>
-                    <input id="idStart" type="text" value="2021-07-05 09:10:00" />
+                    <input id="idStart" type="text" value="2021-07-21 16:30:00" />
                     <label for="idEnd">结束时间:</label>
-                    <input id="idEnd" type="text" value="2021-07-05 09:25:00" />
+                    <input id="idEnd" type="text" value="2021-07-21 16:50:00" />
                 </div>
             </div>
         </div>
 
         <div class="video-container">
             <div>
-                <video name="idVideo" class="centeredVideo" autoplay>
+                <video name="idVideo" class="centeredVideo" autoplay controls>
                     Your browser is too old which doesn't support HTML5 video.
                 </video>
                 <label id="idLabel" class="centeredLabel" style="color: red;"></label>
@@ -47,6 +47,8 @@
             <button onclick="onBtDestroy()">Destroy</button>
             <button onclick="onBtPause()">暂停</button>
             <button onclick="onBtResume()">恢复播放</button>
+            <button onclick="onBtSpeed2()">二倍速回放</button>
+            <button onclick="onBtSpeed1()">正常速度回放</button>
         </div>
         <textarea name="idLogbox" class="logcatBox" rows="10" readonly></textarea>
     </div>
@@ -150,11 +152,31 @@
             }
         }
 
-        //恢复回放
+        //从暂停中恢复播放
         function onBtResume() {
             if (player != null) {
                 player.resume();
             }
+        }
+
+        //二倍速回放
+        function onBtSpeed2() {
+            //第一步：调用后台历史视频
+            //外部客户通过openApi,内部客户通过vega接口，调用历史视频回放控制接口，传递控制类型3（快进）、速度2（2倍速）
+            //下面sendPlaybackControlCmdToServer函数为测试环境测试用，仅用于测试调试
+            sendPlaybackControlCmdToServer(imei,channel,3,2,"2021-06-01 17:00:00");
+            //第二步：设置播放器以2倍速播放
+            this.player.setPlaySpeed(2);
+        }
+
+        //正常速度回放
+        function onBtSpeed1() {
+            //第一步：调用后台历史视频
+            //外部客户通过openApi,内部客户通过vega接口，调用历史视频回放控制接口，传递控制类型3（快进）、速度1（1倍速）
+            //下面sendPlaybackControlCmdToServer函数为测试环境测试用，仅用于测试调试
+            sendPlaybackControlCmdToServer(imei,channel,3,1,"2021-06-01 17:00:00");
+            //第二步：设置播放器以1倍速播放
+            this.player.setPlaySpeed(1);
         }
 
         //结束回放或销毁播放器

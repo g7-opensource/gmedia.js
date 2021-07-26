@@ -28012,6 +28012,9 @@ var GPlayer = exports.GPlayer = function () {
         key: 'seek',
         value: function seek(time) {}
     }, {
+        key: 'setPlaySpeed',
+        value: function setPlaySpeed(speed) {}
+    }, {
         key: 'destroy',
         value: function destroy() {}
     }]);
@@ -28229,6 +28232,14 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
                 this._seekByPassive(time);
             }
             return true;
+        }
+    }, {
+        key: "setPlaySpeed",
+        value: function setPlaySpeed(speed) {
+            if (this.element == null) {
+                return;
+            }
+            this.element.playbackRate = speed;
         }
     }, {
         key: "destroy",

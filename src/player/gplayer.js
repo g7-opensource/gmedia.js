@@ -45,6 +45,10 @@ export class GPlayer {
 
     }
 
+    setPlaySpeed(speed) {
+        
+    }
+
     destroy() {
 
     }
