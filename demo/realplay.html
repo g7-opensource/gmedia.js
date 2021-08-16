@@ -23,6 +23,8 @@
                     <label for="idStreamType">主码流</label>
                     <input type="checkbox" id="idAvitemType" checked/>
                     <label for="idAvitemType">音视频</label>
+                    <input type="checkbox" id="idIsHls" checked/>
+                    <label for="idIsHls">hls协议</label>
                 </div>
             </div>
         </div>
@@ -84,9 +86,11 @@
                 {
                     log("获取播放地址失败");
                 }
-                let url = json.data[0].flv_url;
+                let flvUrl = json.data[0].flv_url;
                 let helpUrl = json.data[0].helpUrl;
-             
+                let hlsUrl = json.data[0].hls_url;          
+                let url = document.getElementById('idIsHls').checked ? hlsUrl : flvUrl;
+
                 player = gmediajs.createPlayer(url, {helpUrl: helpUrl});
                 player.on(gmediajs.GPlayerEvent.ERROR,(type, subtype, detail)=>{
                     log('error ' + type + ' ' + subtype + ' ' + detail);
@@ -97,10 +101,10 @@
                 player.on(gmediajs.GPlayerEvent.STATISTICS_INFO,(info)=>{
                     let speed = Number(info.speed)
                     speed = Math.ceil(speed);
-                    //console.log(speed+ 'kB/s');
+                    log(speed+ 'kB/s');
                 });
                 player.on(gmediajs.GPlayerEvent.MEDIA_STATE,(info)=>{
-                    logToTextbox(info.detail);
+                    log(info.detail);
                     showMediaState(info.desc + info.state.toString());
                 });
                 player.attachMediaElement(elVideo);

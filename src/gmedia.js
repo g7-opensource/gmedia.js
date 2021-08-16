@@ -3,11 +3,18 @@ import {GTalkerEvent, GTalkerConnectStatus, GTalkerConnectErrorType} from './tal
 import {GHelperEvent} from "./helper/ghelper-events.js";
 import {GPlayer} from './player/gplayer.js';
 import { HttpFlvPlayer } from './player/httpflv-player.js';
+import { HlsPlayer } from './player/hls-player';
 import { HttpFlvTalker } from './talker/httpflv-talker.js';
 import { GHelper } from "./helper/ghelper.js";
 
 function createPlayer(url, config = null) {
-  let player = new HttpFlvPlayer();
+  let player = null;
+  if (url.indexOf(".m3u8") != -1) {
+    player = new HlsPlayer();
+  }
+  else {
+    player = new HttpFlvPlayer();
+  }
   player.init(url, config);
   return player;
 }
@@ -30,6 +37,10 @@ function isHttpFlvSupported() {
   return HttpFlvPlayer.isSupported();
 }
 
+function isHlsSupported() {
+  return HlsPlayer.isSupported();
+}
+
 function isTalkSupported() {
   return HttpFlvTalker.isSupported();
 }
@@ -38,7 +49,9 @@ let gmediajs = {};
 
 gmediajs.createPlayer = createPlayer;
 gmediajs.isHttpFlvSupported = isHttpFlvSupported;
+gmediajs.isHlsSupported = isHlsSupported;
 gmediajs.HttpFlvPlayer = HttpFlvPlayer;
+gmediajs.HlsPlayer = HlsPlayer;
 gmediajs.GPlayerEvent = GPlayerEvent;
 gmediajs.GErrorType = GErrorType;
 gmediajs.GPlaybackControlStatus = GPlaybackControlStatus;

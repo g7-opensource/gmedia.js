@@ -380,6 +380,7 @@ helper.off(gmediajs.GHelperEvent.MEDIA_STATE);
 | Event                     | Description                                                                                       |
 | ------------------------- | ------------------------------------------------------------------------------------------------- |
 | MEDIA_STATE               | 获取流媒体播放状态信息，比如设备响应情况，有无推流等                                               |
+| HLS_USAGE                 | 获取HLS协议播放时的资源消耗情况，包含流量速度                                                      |
 
 ### gmediajs.GHelperEvent.MEDIA_STATE
 
@@ -398,3 +399,8 @@ helper.off(gmediajs.GHelperEvent.MEDIA_STATE);
 |8               |收到视频流                       |收到视频流                                                                    |
 |9               |收到音频流                       |收到音频流                                                                    |
 |10              |播放已结束                       |播放已结束                                                                    |
+
+### gmediajs.GHelperEvent.HLS_USAGE
+
+HLS协议播放时的资源消耗情况，回调数据为json结构，含speed一个属性，详情如下
+speed: 播放器与服务器的传输每秒平均流量，单位为：KB/S

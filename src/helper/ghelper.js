@@ -2,10 +2,16 @@ import {GHelperEvent} from "./ghelper-events.js"
 export class GHelper {
     constructor() {
         this.callMediaState = null;
+        this.callHlsUsage = null;
+
+        this.url = "";
+        this.sessionid = "";
         this.connect = null;
     }
 
-    init(url) {
+    init(url, sessionid = "") {
+        this.url = url;
+        this.sessionid = sessionid;
         this.connect = new WebSocket(url);
         this.connect.onopen = this._onConnectOpen.bind(this);
         this.connect.onmessage = this._onConnectMessage.bind(this);
@@ -14,14 +20,20 @@ export class GHelper {
     }
 
     on(event, call) {
-        if (event = GHelperEvent.MEDIA_STATE) {
+        if (event == GHelperEvent.MEDIA_STATE) {
             this.callMediaState = call;
+        }
+        else if (event == GHelperEvent.HLS_USAGE) {
+            this.callHlsUsage = call;
         }
     }
 
     off(event) {
-        if (event = GHelperEvent.MEDIA_STATE) {
+        if (event == GHelperEvent.MEDIA_STATE) {
             this.callMediaState = null;
+        }
+        else if (event == GHelperEvent.HLS_USAGE) {
+            this.callHlsUsage = null;
         }
     }
 
@@ -36,6 +48,10 @@ export class GHelper {
 
     _onConnectOpen() {
         this._sendConsumeMediaStateCmd();
+        this._sendConsumeNetSignalCmd();
+        if (this.sessionid != "") {
+            this._sendConsumeHlsUsageCmd(this.sessionid);
+        }
     }
 
     _onConnectMessage(e) {
@@ -44,8 +60,15 @@ export class GHelper {
             return;
         }
 
-        if (head.type == "mediastate" && this.callMediaState != null) {
-            this.callMediaState(head.data);
+        if (head.type == "mediastate") {
+            if (this.callMediaState != null) {
+                this.callMediaState(head.data);
+            }
+        }
+        else if (head.type == "hlsusage") {
+            if (this.callHlsUsage != null) {
+                this.callHlsUsage(head.data);
+            }
         }
     }
 
@@ -62,6 +85,30 @@ export class GHelper {
         head["cmd"] = "consume";
         head["type"] = "mediastate";
         head["id"] = "";
+        head["data"] = {};
+
+        let msg = JSON.stringify(head);
+
+        this.connect.send(msg);
+    }
+
+    _sendConsumeNetSignalCmd() {
+        let head = {}
+        head["cmd"] = "consume";
+        head["type"] = "netsignal";
+        head["id"] = "";
+        head["data"] = {};
+
+        let msg = JSON.stringify(head);
+
+        this.connect.send(msg);
+    }
+
+    _sendConsumeHlsUsageCmd(sessionid) {
+        let head = {}
+        head["cmd"] = "consume";
+        head["type"] = "hlsusage";
+        head["id"] = sessionid;
         head["data"] = {};
 
         let msg = JSON.stringify(head);

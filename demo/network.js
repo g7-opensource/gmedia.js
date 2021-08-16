@@ -9,7 +9,8 @@ function getRealplayUrl(imei,channel,avitemType,streamType,callback)
     let url = "http://39.106.82.213:9234/vega/video/open_live?imei=" +  imei +
               "&channels=" + channel +
               "&avitemType=" + avitemType +
-              "&streamType=" + streamType;
+              "&streamType=" + streamType +
+              "&hls=true";
     httpGet(url,callback);
 }
 
