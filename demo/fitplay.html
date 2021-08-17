@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <title>gmediajs demo</title>
+    <link rel="stylesheet" type="text/css" href="demo.css" />
+</head>
+
+<body onload="onLoad()">
+    
+    <div >
+        <div>
+            <div id="streamURL">
+                <label for="idImei">imei:</label>
+                <input id="idImei" type="text" value="125013302691515" />
+                <label for="idChannel">channel:</label>
+                <input id="idChannel" type="text" value="1" />
+            </div>
+            <div>
+                <input type="checkbox" id="idAutoFit"/>
+                <label for="idAutoFit">根据视频内容决定视频控件宽高</label>
+            </div>
+        </div>
+
+        <div >
+            <div>
+                <video style="height: 270px;width: 480px;background-color: black;" name="idVideo" autoplay>
+                    Your browser is too old which doesn't support HTML5 video.
+                </video>
+            </div>
+        </div>
+
+        <div >
+            <button onclick="onBtLoad()">Load</button>
+            <button onclick="onBtDestroy()">Destroy</button>
+            <label>改变视频标签适配方式:</label>
+            <!-- 
+            contain:保持原有尺寸比例。内容被缩放
+            fill:不保证保持原有的比例，内容拉伸填充整个内容容器
+            cover:保持原有尺寸比例。但部分内容可能被剪切
+            none:保留原有元素内容的长度和宽度，也就是说内容不会被重置
+            scale-down:保持原有尺寸比例。内容的尺寸与 none 或 contain 中的一个相同，取决于它们两个之间谁得到的对象尺寸会更小一些
+            initial:设置为默认值
+            inherit:从该元素的父元素继承属性 
+            -->
+            <select onchange="onSelectChange()" id="idSelectFit">
+                <option value="contain">contain</option>
+                <option value="fill">fill</option>
+                <option value="cover">cover</option>
+                <option value="none">none</option>
+                <option value="scale-down">scale-down</option>
+                <option value="initial">initial</option>
+                <option value="inherit">inherit</option>
+            </select>
+        </div>
+        <textarea name="idLogbox" class="logcatBox" rows="10" readonly></textarea>
+    </div>
+
+    <script src="./util.js"></script>
+    <script src="./network.js"></script>
+    <script src="../dist/gmedia.js"></script>
+
+    <script>
+        const logToConsole = false;
+        var elLogbox;          //显示日志控件
+        var elVideo;           //显示播放视频控件
+        var player;            //gmediajs播放器对象
+
+        //初始化
+        function onLoad() {
+            elLogbox = document.getElementsByName('idLogbox')[0];
+            elVideo = document.getElementsByName('idVideo')[0];
+        }
+        
+        function onBtLoad() {
+            let imei = document.getElementById('idImei').value;
+            let channel = document.getElementById('idChannel').value;
+
+            //还原视频宽高
+            elVideo.style.width = "480px";
+            elVideo.style.height = "270px";
+
+            //应该在获取新的播放串前回收掉资源
+            if (player != null) {
+                player.destroy();
+                player = null;
+            }  
+
+            //从测试环境获取播放串并开始播放
+            getRealplayUrl(imei,channel,0,1,(requestUrl,bOk, data)=>{
+                let json = {};
+                if (!bOk || (json = JSON.parse(data)).data.lenght == 0)
+                {
+                    log("获取播放地址失败");
+                }
+                let flvUrl = json.data[0].flv_url;
+
+                elVideo.addEventListener("loadeddata", () => {
+                    //没有勾选根据视频内容决定视频控件高宽就跳过
+                    if (!(document.getElementById("idAutoFit").checked)) {
+                        return;
+                    }
+
+                    log("视频内容宽:" + elVideo.videoWidth + " 视频内容高:" +  elVideo.videoHeight);
+                    //保持视频控件（video标签）宽不变的情况下根据视频内容宽高比动态改变视频控件的高                
+                    let newHeight = parseInt(elVideo.style.width.replace('px',''))
+                        * (elVideo.videoHeight / elVideo.videoWidth);
+                    log("新的视频标签高:" + newHeight);
+                    elVideo.style.height = newHeight.toString() + "px";
+                });
+                player = gmediajs.createPlayer(flvUrl);
+                player.attachMediaElement(elVideo);
+                player.load();
+            });
+        }
+
+        //销毁播放器
+        function onBtDestroy() {
+            if (player != null) {
+                player.destroy();
+                player = null;
+            }
+        }
+
+        function onSelectChange() {
+            let v = document.getElementById('idSelectFit').value;
+            if (elVideo != null) {
+                elVideo.style.objectFit = v;
+                log("video标签的style.objectFit属性改为: " + v)
+            }
+        }
+
+        function log(str) {
+            if (logToConsole) {
+                console.log(str);
+            }
+            else {
+                logToTextbox(str);
+            }
+        }
+
+        function logToTextbox(str) {
+            elLogbox.value = elLogbox.value + str + '\n';
+            elLogbox.scrollTop = elLogbox.scrollHeight;
+        }
+       
+    </script>
+</body>
+</html>
