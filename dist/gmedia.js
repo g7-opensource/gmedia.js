@@ -6179,7 +6179,7 @@ Object.defineProperty(flvjs, 'version', {
     enumerable: true,
     get: function get() {
         // replaced by browserify-versionify transform
-        return '1.6.1';
+        return '1.8.1';
     }
 });
 
@@ -6356,12 +6356,11 @@ var FetchStreamLoader = function (_BaseLoader) {
                 this._abortController = new self.AbortController();
                 params.signal = this._abortController.signal;
             }
-
             this._status = _loader.LoaderStatus.kConnecting;
             self.fetch(seekConfig.url, params).then(function (res) {
                 if (_this2._requestAbort) {
+                    _this2._requestAbort = false;
                     _this2._status = _loader.LoaderStatus.kIdle;
-                    res.body.cancel();
                     return;
                 }
                 if (res.ok && res.status >= 200 && res.status <= 299) {
@@ -6395,7 +6394,6 @@ var FetchStreamLoader = function (_BaseLoader) {
                 if (_this2._abortController && _this2._abortController.signal.aborted) {
                     return;
                 }
-
                 _this2._status = _loader.LoaderStatus.kError;
                 if (_this2._onError) {
                     _this2._onError(_loader.LoaderErrors.EXCEPTION, { code: -1, msg: e.message });
@@ -6408,16 +6406,8 @@ var FetchStreamLoader = function (_BaseLoader) {
         key: 'abort',
         value: function abort() {
             this._requestAbort = true;
-
-            if (this._status !== _loader.LoaderStatus.kBuffering || !_browser2.default.chrome) {
-                // Chrome may throw Exception-like things here, avoid using if is buffering
-                if (this._abortController) {
-                    try {
-                        this._abortController.abort();
-                    } catch (e) {
-                        return;
-                    }
-                }
+            if (this._abortController) {
+                this._abortController.abort();
             }
         }
     }, {
@@ -6447,10 +6437,8 @@ var FetchStreamLoader = function (_BaseLoader) {
                         }
                     }
                 } else {
-                    if (_this3._abortController && _this3._abortController.signal.aborted) {
-                        _this3._status = _loader.LoaderStatus.kComplete;
-                        return;
-                    } else if (_this3._requestAbort === true) {
+                    if (_this3._requestAbort === true) {
+                        _this3._requestAbort = false;
                         _this3._status = _loader.LoaderStatus.kComplete;
                         return reader.cancel();
                     }
@@ -6468,11 +6456,6 @@ var FetchStreamLoader = function (_BaseLoader) {
                     _this3._pump(reader);
                 }
             }).catch(function (e) {
-                if (_this3._abortController && _this3._abortController.signal.aborted) {
-                    _this3._status = _loader.LoaderStatus.kComplete;
-                    return;
-                }
-
                 if (e.code === 11 && _browser2.default.msedge) {
                     // InvalidStateError on Microsoft Edge
                     // Workaround: Edge may throw InvalidStateError after ReadableStreamReader.cancel() call
@@ -9103,10 +9086,10 @@ var FlvPlayer = function () {
 
             this._mediaElement = mediaElement;
             mediaElement.addEventListener('loadedmetadata', this.e.onvLoadedMetadata);
-            //mediaElement.addEventListener('seeking', this.e.onvSeeking);
+            mediaElement.addEventListener('seeking', this.e.onvSeeking);
             mediaElement.addEventListener('canplay', this.e.onvCanPlay);
             mediaElement.addEventListener('stalled', this.e.onvStalled);
-            //mediaElement.addEventListener('progress', this.e.onvProgress);
+            mediaElement.addEventListener('progress', this.e.onvProgress);
 
             this._msectl = new _mseController2.default(this._config);
 
@@ -9146,10 +9129,10 @@ var FlvPlayer = function () {
             if (this._mediaElement) {
                 this._msectl.detachMediaElement();
                 this._mediaElement.removeEventListener('loadedmetadata', this.e.onvLoadedMetadata);
-                //this._mediaElement.removeEventListener('seeking', this.e.onvSeeking);
+                this._mediaElement.removeEventListener('seeking', this.e.onvSeeking);
                 this._mediaElement.removeEventListener('canplay', this.e.onvCanPlay);
                 this._mediaElement.removeEventListener('stalled', this.e.onvStalled);
-                //this._mediaElement.removeEventListener('progress', this.e.onvProgress);
+                this._mediaElement.removeEventListener('progress', this.e.onvProgress);
                 this._mediaElement = null;
             }
             if (this._msectl) {
@@ -10979,103 +10962,92 @@ var MP4Remuxer = function () {
                 var _sample = samples[i];
                 var unit = _sample.unit;
                 var originalDts = _sample.dts - this._dtsBase;
-                var _dts = originalDts;
-                var needFillSilentFrames = false;
-                var silentFrames = null;
-                var sampleDuration = 0;
-
-                if (originalDts < -0.001) {
-                    continue; //pass the first sample with the invalid dts
-                }
-
-                if (this._audioMeta.codec !== 'mp3') {
-                    // for AAC codec, we need to keep dts increase based on refSampleDuration
-                    var curRefDts = originalDts;
-                    var maxAudioFramesDrift = 3;
-                    if (this._audioNextDts) {
-                        curRefDts = this._audioNextDts;
-                    }
-
-                    dtsCorrection = originalDts - curRefDts;
-                    if (dtsCorrection <= -maxAudioFramesDrift * refSampleDuration) {
-                        // If we're overlapping by more than maxAudioFramesDrift number of frame, drop this sample
-                        //Log.w(this.TAG, `Dropping 1 audio frame (originalDts: ${originalDts} ms ,curRefDts: ${curRefDts} ms)  due to dtsCorrection: ${dtsCorrection} ms overlap.`);
-                        continue;
-                    } else if (dtsCorrection >= maxAudioFramesDrift * refSampleDuration && this._fillAudioTimestampGap && !_browser2.default.safari) {
-                        // Silent frame generation, if large timestamp gap detected && config.fixAudioTimestampGap
-                        needFillSilentFrames = true;
-                        // We need to insert silent frames to fill timestamp gap
-                        var frameCount = Math.floor(dtsCorrection / refSampleDuration);
-                        _logger2.default.w(this.TAG, 'Large audio timestamp gap detected, may cause AV sync to drift. ' + 'Silent frames will be generated to avoid unsync.\n' + ('originalDts: ' + originalDts + ' ms, curRefDts: ' + curRefDts + ' ms, ') + ('dtsCorrection: ' + Math.round(dtsCorrection) + ' ms, generate: ' + frameCount + ' frames'));
-
-                        _dts = Math.floor(curRefDts);
-                        sampleDuration = Math.floor(curRefDts + refSampleDuration) - _dts;
-
-                        var _silentUnit = _aacSilent2.default.getSilentFrame(this._audioMeta.originalCodec, this._audioMeta.channelCount);
-                        if (_silentUnit == null) {
-                            _logger2.default.w(this.TAG, 'Unable to generate silent frame for ' + (this._audioMeta.originalCodec + ' with ' + this._audioMeta.channelCount + ' channels, repeat last frame'));
-                            // Repeat last frame
-                            _silentUnit = unit;
-                        }
-                        silentFrames = [];
-
-                        for (var j = 0; j < frameCount; j++) {
-                            curRefDts = curRefDts + refSampleDuration;
-                            var intDts = Math.floor(curRefDts); // change to integer
-                            var intDuration = Math.floor(curRefDts + refSampleDuration) - intDts;
-                            var frame = {
-                                dts: intDts,
-                                pts: intDts,
-                                cts: 0,
-                                unit: _silentUnit,
-                                size: _silentUnit.byteLength,
-                                duration: intDuration, // wait for next sample
-                                originalDts: originalDts,
-                                flags: {
-                                    isLeading: 0,
-                                    dependsOn: 1,
-                                    isDependedOn: 0,
-                                    hasRedundancy: 0
-                                }
-                            };
-                            silentFrames.push(frame);
-                            mdatBytes += frame.size;
-                        }
-
-                        this._audioNextDts = curRefDts + refSampleDuration;
-                    } else {
-
-                        _dts = Math.floor(curRefDts);
-                        sampleDuration = Math.floor(curRefDts + refSampleDuration) - _dts;
-                        this._audioNextDts = curRefDts + refSampleDuration;
-                    }
-                } else {
-                    // keep the original dts calculate algorithm for mp3
-                    _dts = originalDts - dtsCorrection;
-
-                    if (i !== samples.length - 1) {
-                        var nextDts = samples[i + 1].dts - this._dtsBase - dtsCorrection;
-                        sampleDuration = nextDts - _dts;
-                    } else {
-                        // the last sample
-                        if (lastSample != null) {
-                            // use stashed sample's dts to calculate sample duration
-                            var _nextDts = lastSample.dts - this._dtsBase - dtsCorrection;
-                            sampleDuration = _nextDts - _dts;
-                        } else if (mp4Samples.length >= 1) {
-                            // use second last sample duration
-                            sampleDuration = mp4Samples[mp4Samples.length - 1].duration;
-                        } else {
-                            // the only one sample, use reference sample duration
-                            sampleDuration = Math.floor(refSampleDuration);
-                        }
-                    }
-                    this._audioNextDts = _dts + sampleDuration;
-                }
+                var _dts = originalDts - dtsCorrection;
 
                 if (firstDts === -1) {
                     firstDts = _dts;
                 }
+
+                var sampleDuration = 0;
+
+                if (i !== samples.length - 1) {
+                    var nextDts = samples[i + 1].dts - this._dtsBase - dtsCorrection;
+                    sampleDuration = nextDts - _dts;
+                } else {
+                    // the last sample
+                    if (lastSample != null) {
+                        // use stashed sample's dts to calculate sample duration
+                        var _nextDts = lastSample.dts - this._dtsBase - dtsCorrection;
+                        sampleDuration = _nextDts - _dts;
+                    } else if (mp4Samples.length >= 1) {
+                        // use second last sample duration
+                        sampleDuration = mp4Samples[mp4Samples.length - 1].duration;
+                    } else {
+                        // the only one sample, use reference sample duration
+                        sampleDuration = Math.floor(refSampleDuration);
+                    }
+                }
+
+                var needFillSilentFrames = false;
+                var silentFrames = null;
+
+                // Silent frame generation, if large timestamp gap detected && config.fixAudioTimestampGap
+                if (sampleDuration > refSampleDuration * 1.5 && this._audioMeta.codec !== 'mp3' && this._fillAudioTimestampGap && !_browser2.default.safari) {
+                    // We need to insert silent frames to fill timestamp gap
+                    needFillSilentFrames = true;
+                    var delta = Math.abs(sampleDuration - refSampleDuration);
+                    var frameCount = Math.ceil(delta / refSampleDuration);
+                    var currentDts = _dts + refSampleDuration; // Notice: in float
+
+                    _logger2.default.w(this.TAG, 'Large audio timestamp gap detected, may cause AV sync to drift. ' + 'Silent frames will be generated to avoid unsync.\n' + ('dts: ' + (_dts + sampleDuration) + ' ms, expected: ' + (_dts + Math.round(refSampleDuration)) + ' ms, ') + ('delta: ' + Math.round(delta) + ' ms, generate: ' + frameCount + ' frames'));
+
+                    var _silentUnit = _aacSilent2.default.getSilentFrame(this._audioMeta.originalCodec, this._audioMeta.channelCount);
+                    if (_silentUnit == null) {
+                        _logger2.default.w(this.TAG, 'Unable to generate silent frame for ' + (this._audioMeta.originalCodec + ' with ' + this._audioMeta.channelCount + ' channels, repeat last frame'));
+                        // Repeat last frame
+                        _silentUnit = unit;
+                    }
+                    silentFrames = [];
+
+                    for (var j = 0; j < frameCount; j++) {
+                        var intDts = Math.round(currentDts); // round to integer
+                        if (silentFrames.length > 0) {
+                            // Set previous frame sample duration
+                            var previousFrame = silentFrames[silentFrames.length - 1];
+                            previousFrame.duration = intDts - previousFrame.dts;
+                        }
+                        var frame = {
+                            dts: intDts,
+                            pts: intDts,
+                            cts: 0,
+                            unit: _silentUnit,
+                            size: _silentUnit.byteLength,
+                            duration: 0, // wait for next sample
+                            originalDts: originalDts,
+                            flags: {
+                                isLeading: 0,
+                                dependsOn: 1,
+                                isDependedOn: 0,
+                                hasRedundancy: 0
+                            }
+                        };
+                        silentFrames.push(frame);
+                        mdatBytes += frame.size;
+                        currentDts += refSampleDuration;
+                    }
+
+                    // last frame: align end time to next frame dts
+                    var lastFrame = silentFrames[silentFrames.length - 1];
+                    lastFrame.duration = _dts + sampleDuration - lastFrame.dts;
+
+                    // silentFrames.forEach((frame) => {
+                    //     Log.w(this.TAG, `SilentAudio: dts: ${frame.dts}, duration: ${frame.duration}`);
+                    // });
+
+                    // Set correct sample duration for current frame
+                    sampleDuration = Math.round(refSampleDuration);
+                }
+
                 mp4Samples.push({
                     dts: _dts,
                     pts: _dts,
@@ -11096,13 +11068,6 @@ var MP4Remuxer = function () {
                     // Silent frames should be inserted after wrong-duration frame
                     mp4Samples.push.apply(mp4Samples, silentFrames);
                 }
-            }
-
-            if (mp4Samples.length === 0) {
-                //no samples need to remux
-                track.samples = [];
-                track.length = 0;
-                return;
             }
 
             // allocate mdatbox
@@ -11130,7 +11095,7 @@ var MP4Remuxer = function () {
 
             var latest = mp4Samples[mp4Samples.length - 1];
             lastDts = latest.dts + latest.duration;
-            //this._audioNextDts = lastDts;
+            this._audioNextDts = lastDts;
 
             // fill media segment info & add to info list
             var info = new _mediaSegmentInfo.MediaSegmentInfo();

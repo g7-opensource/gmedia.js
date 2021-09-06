@@ -1,6 +1,6 @@
 {
   "name": "gmedia",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "g7 h5 player",
   "main": "./dist/gmedia.js",
   "module": "./src/gmedia.js",
@@ -11,7 +11,7 @@
   "dependencies": {
     "es6-promise": "^4.2.5",
     "webworkify": "^1.5.0",
-    "flv-g7.js": "1.6.2",
+    "flv-g7.js": "1.8.1",
     "recorder-core": "1.1.21021500",
     "hls.js": "1.0.9"
   },
