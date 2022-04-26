@@ -6,35 +6,35 @@
 
 function getRealplayUrl(imei,channel,avitemType,streamType,callback)
 {
-    let url = "http://39.106.82.213:9234/vega/video/open_live?imei=" +  imei +
+    let url = "http://114.116.210.142:9234/vega/video/open_live?imei=" +  imei +
               "&channels=" + channel +
               "&avitemType=" + avitemType +
               "&streamType=" + streamType +
-              "&hls=true";
+              "&hls=true&https=true";
     httpGet(url,callback);
 }
 
 function getTalkUrl(imei,channel,callback)
 {
-    let url = "http://39.106.82.213:9234/vega/video/open_live?imei=" +  imei +
+    let url = "http://114.116.210.142:9234/vega/video/open_live?imei=" +  imei +
               "&channels=" + channel +
-              "&avitemType=" + 2;
+              "&avitemType=" + 2 + "&https=true&storage=true";
     httpGet(url,callback);
 }
 
 function getPlaybackUrl(imei,channel,start,end,callback)
 {
-    let url = "http://39.106.82.213:9234/vega/video/open_playback?imei=" +  imei +
+    let url = "http://114.116.210.142:9234/vega/video/open_playback?imei=" +  imei +
               "&channels=" + channel +
               "&from=" + start +
               "&to=" + end + 
-              "&avitemType=0&streamType=1&memType=1";
+              "&avitemType=0&streamType=1&memType=1&https=true";
     httpGet(url,callback);
 }
 
 function sendPlaybackControlCmdToServer(imei,channel,control,quickType,positionTime)
 {
-    let url =  "http://39.106.82.213:9234/vega/video/control_playback?imei=" + imei +
+    let url =  "http://114.116.210.142:9234/vega/video/control_playback?imei=" + imei +
         "&channels=" + channel + "&control=" + control + "&quickType=" + quickType +
         "&positionTime=" + positionTime;
     httpGet(url,(requestUrl,bOk, data)=>{});
