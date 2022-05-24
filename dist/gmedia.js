@@ -56136,7 +56136,6 @@ var GRecord = function () {
             bitRate = _ref$bitRate === undefined ? 16 : _ref$bitRate,
             _ref$sampleRate = _ref.sampleRate,
             sampleRate = _ref$sampleRate === undefined ? 8000 : _ref$sampleRate,
-            audio = _ref.audio,
             _ref$waveviewOption = _ref.waveviewOption,
             waveviewOption = _ref$waveviewOption === undefined ? {} : _ref$waveviewOption,
             _ref$limitDuration = _ref.limitDuration,
@@ -56153,13 +56152,19 @@ var GRecord = function () {
         this.sampleRate = sampleRate;
         this.recorder = null;
         this.wave = null;
-        this.audio = audio;
         this.list = [];
         this.waveviewOption = waveviewOption;
         this.limitDuration = limitDuration;
         this.onProcess = onProcess.bind(this);
         this.onStop = onStop.bind(this);
     }
+
+    /**
+     * 打开录音，弹出权限申请框，并初始化声波相关控制
+     * @param { fucntion } callback 
+     * @returns  Recorder 示例
+     */
+
 
     _createClass(GRecord, [{
         key: 'open',
@@ -56203,7 +56208,7 @@ var GRecord = function () {
                 });
             }, function (msg, isUserNotAllow) {
                 callback({
-                    code: 1000004,
+                    code: 100004,
                     msg: (isUserNotAllow ? 'UserNotAllow，' : '') + '\u6253\u5F00\u5931\u8D25\uFF1A' + msg
                 });
             });
@@ -56299,38 +56304,39 @@ var GRecord = function () {
             });
         }
     }, {
-        key: 'play',
-        value: function play(_ref3, audio) {
-            var blob = _ref3.blob,
-                duration = _ref3.duration,
-                rec = _ref3.rec;
-
-            audio = audio || this.audio;
-            if (audio) {
-                audio.controls = true;
-                if (!(audio.ended || audio.paused)) {
-                    audio.pause();
-                }
-                audio.onError = function (e) {};
-                audio.src = (window.URL || window.webkitURL).createObjectURL(blob);
-                audio.play();
-            } else {
-                throw new Error('未指定播放的audio控件');
-            }
-        }
-    }, {
         key: 'down',
-        value: function down(_ref4) {
-            var blob = _ref4.blob,
-                duration = _ref4.duration,
-                rec = _ref4.rec;
+        value: function down(data) {
+            var href = '';
+            var name = '';
+            if (typeof data === 'string') {
+                href = data;
+                name = '' + +new Date();
+            } else {
+                var blob = data.blob,
+                    duration = data.duration,
+                    _data$rec = data.rec,
+                    rec = _data$rec === undefined ? {} : _data$rec;
 
-            var name = 'rec-' + duration + 'ms-' + (rec.set.bitRate || '-') + 'kbps-' + (rec.set.sampleRate || '-') + 'hz.' + (rec.set.type || (/\w+$/.exec(o.blob.type) || [])[0] || 'unknown');
+                rec.set = rec.set || {};
+                name = 'rec-' + duration + 'ms-' + (rec.set.bitRate || '-') + 'kbps-' + (rec.set.sampleRate || '-') + 'hz.' + (rec.set.type || (/\w+$/.exec(blob.type) || [])[0] || 'unknown');
+                // eslint-disable-next-line no-undef
+                href = (window.URL || webkitURL).createObjectURL(blob);
+            }
+
             var downA = document.createElement('a');
-            // eslint-disable-next-line no-undef
-            downA.href = (window.URL || webkitURL).createObjectURL(blob);
+            downA.href = href;
             downA.download = name;
             downA.click();
+        }
+    }, {
+        key: 'getList',
+        value: function getList() {
+            return this.getList;
+        }
+    }, {
+        key: 'clearList',
+        value: function clearList() {
+            this.getList = [];
         }
     }]);
 

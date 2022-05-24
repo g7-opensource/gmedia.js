@@ -8,7 +8,6 @@ export default class GRecord {
         type = 'mp3',
         bitRate = 16,
         sampleRate = 8000,
-        audio,
         waveviewOption = {},
         limitDuration = 2 * 60 * 1000,
         onProcess = () => {},
@@ -19,7 +18,6 @@ export default class GRecord {
         this.sampleRate = sampleRate;      
         this.recorder = null;
         this.wave = null; 
-        this.audio = audio;
         this.list = [];
         this.waveviewOption = waveviewOption;
         this.limitDuration = limitDuration;
@@ -27,6 +25,11 @@ export default class GRecord {
         this.onStop = onStop.bind(this);
     }
 
+    /**
+     * 打开录音，弹出权限申请框，并初始化声波相关控制
+     * @param { fucntion } callback 
+     * @returns  Recorder 示例
+     */
     open(callback) {
         this.recorder = Recorder({
             type: this.type,
@@ -62,7 +65,7 @@ export default class GRecord {
             });
         }, (msg, isUserNotAllow) => {            
             callback({
-                code: 1000004,
+                code: 100004,
                 msg: `${isUserNotAllow ? 'UserNotAllow，' : ''}打开失败：${msg}`,
             });
         });
@@ -158,7 +161,7 @@ export default class GRecord {
             href = data;
             name = `${+new Date()}`;
         } else {
-            const { blob, duration, rec } = data;
+            const { blob, duration, rec = {} } = data;
             rec.set = rec.set || {};
             name = `rec-${duration}ms-${(rec.set.bitRate || '-')}kbps-${(rec.set.sampleRate || '-')}hz.${(rec.set.type || (/\w+$/.exec(blob.type) || [])[0] || 'unknown')}`;
             // eslint-disable-next-line no-undef
@@ -169,5 +172,13 @@ export default class GRecord {
         downA.href = href;
         downA.download = name;
         downA.click();
+    }
+
+    getList() {
+        return this.getList;
+    }
+
+    clearList() {
+        this.getList = [];
     }
 }

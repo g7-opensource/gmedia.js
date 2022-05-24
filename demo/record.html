@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
 
 <title>录音demo</title>
+<script src="./axios.js"></script>
 </head>
 
 <body>
@@ -14,7 +15,7 @@
 	</div>
 	<div class="mainBox">
 		<div class="pd btns">
-			<input id="audioUrl" type="text" placeholder="请输入要播放的音频url" />
+			<input id="audioUrl" style="height: 30px; width: 200px;" type="text" placeholder="请输入要播放的音频url" />
 			<button onclick="playUrl()">播放</button>
 		</div>		
 	</div>
@@ -37,6 +38,7 @@
 			<span style="display: inline-block;">
 				<button onclick="recPlay()">播放</button>
 				<button onclick="recDown()">下载</button>
+				<button onclick="recUpload()">上传</button>
 			</span>
 		</div>
 		
@@ -66,7 +68,7 @@ var gRecord = new gmediajs.GRecord({
 	type: 'mp3',
 	sampleRate: 8000,
 	bitRate: 16,
-	limitDuration: 5 * 1000,
+	limitDuration: 2 * 60 * 1000,
 	waveviewOption: {
 		elem: '.recwave'
 	},
@@ -184,11 +186,46 @@ function recDown() {
 	gRecord.down(recBlob);
 }
 
+function makeApiSign(config) {
+	const { reqType, path, product = '', version = 'v1', accessId, secretKey } = config;
+	const timestamp = Date.now();
+    const stringToSign = `${reqType.toUpperCase()}\n${timestamp}\n/${version}/${product}${path.replace(/\?.*/, '')}`;
+    const sign = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA1, secretKey).update(stringToSign).finalize().toString(CryptoJS.enc.Base64);
+	console.log(sign);
+    return {
+        accessid: accessId,
+        sign,
+        g7timestamp: timestamp,
+    };
+}
+
+const service = axios.create({
+	timeout: 10000,
+	headers: {
+		'Content-Type': 'multipart/form-data',
+	},
+});
 
 
 
-
-
+function recUpload() {
+	if (!recBlob) {
+		reclog('请先录音，然后再上传', 1);
+		return;
+	}
+	// 建议使用这种上传方式，multipart/form-data + formdata
+	const form = new FormData();
+	form.append('file', recBlob.blob, 'test-recorder.mp3');
+	service({
+		method: 'post',
+		url: '上传的url地址',
+		data: form,
+	}).then((data) => {
+		reclog(`上传成功！地址为：${data.data.data.ossUrl}`);
+	}).catch((e) => {
+		console.log(e);
+	});
+};
 
 
 
