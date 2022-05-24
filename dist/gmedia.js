@@ -53841,6 +53841,163 @@ var mp3TrimFixSetMeta=function(meta,set){
 })();
 },{}],5:[function(_dereq_,module,exports){
 /*
+录音 Recorder扩展，动态波形显示
+https://github.com/xiangyuecn/Recorder
+*/
+(function(){
+
+var WaveView=function(set){
+	return new fn(set);
+};
+var fn=function(set){
+	var This=this;
+	var o={
+		/*
+		elem:"css selector" //自动显示到dom，并以此dom大小为显示大小
+			//或者配置显示大小，手动把waveviewObj.elem显示到别的地方
+		,width:0 //显示宽度
+		,height:0 //显示高度
+		
+		以上配置二选一
+		*/
+		
+		scale:2 //缩放系数，应为正整数，使用2(3? no!)倍宽高进行绘制，避免移动端绘制模糊
+		,speed:8 //移动速度系数，越大越快
+		
+		,lineWidth:3 //线条基础粗细
+		
+		//渐变色配置：[位置，css颜色，...] 位置: 取值0.0-1.0之间
+		,linear1:[0,"rgba(150,96,238,1)",0.2,"rgba(170,79,249,1)",1,"rgba(53,199,253,1)"] //线条渐变色1，从左到右
+		,linear2:[0,"rgba(209,130,255,0.6)",1,"rgba(53,199,255,0.6)"] //线条渐变色2，从左到右
+		,linearBg:[0,"rgba(255,255,255,0.2)",1,"rgba(54,197,252,0.2)"] //背景渐变色，从上到下
+	};
+	for(var k in set){
+		o[k]=set[k];
+	};
+	This.set=set=o;
+	
+	var elem=set.elem;
+	if(elem){
+		if(typeof(elem)=="string"){
+			elem=document.querySelector(elem);
+		}else if(elem.length){
+			elem=elem[0];
+		};
+	};
+	if(elem){
+		set.width=elem.offsetWidth;
+		set.height=elem.offsetHeight;
+	};
+	
+	var scale=set.scale;
+	var width=set.width*scale;
+	var height=set.height*scale;
+	
+	var thisElem=This.elem=document.createElement("div");
+	var lowerCss=["","transform-origin:0 0;","transform:scale("+(1/scale)+");"];
+	thisElem.innerHTML='<div style="width:'+set.width+'px;height:'+set.height+'px;overflow:hidden"><div style="width:'+width+'px;height:'+height+'px;'+lowerCss.join("-webkit-")+lowerCss.join("-ms-")+lowerCss.join("-moz-")+lowerCss.join("")+'"><canvas/></div></div>';
+	
+	var canvas=This.canvas=thisElem.querySelector("canvas");
+	var ctx=This.ctx=canvas.getContext("2d");
+	canvas.width=width;
+	canvas.height=height;
+	
+	This.linear1=This.genLinear(ctx,width,set.linear1);
+	This.linear2=This.genLinear(ctx,width,set.linear2);
+	This.linearBg=This.genLinear(ctx,height,set.linearBg,true);
+	
+	if(elem){
+		elem.innerHTML="";
+		elem.appendChild(thisElem);
+	};
+	
+	This._phase=0;
+};
+fn.prototype=WaveView.prototype={
+	genLinear:function(ctx,size,colors,top){
+		var rtv=ctx.createLinearGradient(0,0,top?0:size,top?size:0);
+		for(var i=0;i<colors.length;){
+			rtv.addColorStop(colors[i++],colors[i++]);
+		};
+		return rtv;
+	}
+	,genPath:function(frequency,amplitude,phase){
+		//曲线生成算法参考 https://github.com/HaloMartin/MCVoiceWave/blob/f6dc28975fbe0f7fc6cc4dbc2e61b0aa5574e9bc/MCVoiceWave/MCVoiceWaveView.m#L268
+		var rtv=[];
+		var This=this,set=This.set;
+		var scale=set.scale;
+		var width=set.width*scale;
+		var maxAmplitude=set.height*scale/2;
+		
+		for(var x=0;x<width;x+=scale) {
+			var scaling=(1+Math.cos(Math.PI+(x/width)*2*Math.PI))/2;
+			var y=scaling*maxAmplitude*amplitude*Math.sin(2*Math.PI*(x/width)*frequency+phase)+maxAmplitude;
+			rtv.push(y);
+		}
+		return rtv;
+	}
+	,input:function(pcmData,powerLevel,sampleRate){
+		var This=this,set=This.set;
+		var ctx=This.ctx;
+		var scale=set.scale;
+		var width=set.width*scale;
+		var height=set.height*scale;
+		
+		var speedx=set.speed*pcmData.length/sampleRate;
+		var phase=This._phase-=speedx;//位移速度
+		var amplitude=powerLevel/100;
+		var path1=This.genPath(2,amplitude,phase);
+		var path2=This.genPath(1.8,amplitude,phase+speedx*5);
+		
+		//开始绘制图形
+		ctx.clearRect(0,0,width,height);
+		
+		//绘制包围背景
+		ctx.beginPath();
+		for(var i=0,x=0;x<width;i++,x+=scale) {
+			if (x==0) {
+				ctx.moveTo(x,path1[i]);
+			}else {
+				ctx.lineTo(x,path1[i]);
+			};
+		};
+		i--;
+		for(var x=width-1;x>=0;i--,x-=scale) {
+			ctx.lineTo(x,path2[i]);
+		};
+		ctx.closePath();
+		ctx.fillStyle=This.linearBg;
+		ctx.fill();
+		
+		//绘制线
+		This.drawPath(path2,This.linear2);
+		This.drawPath(path1,This.linear1);
+	}
+	,drawPath:function(path,linear){
+		var This=this,set=This.set;
+		var ctx=This.ctx;
+		var scale=set.scale;
+		var width=set.width*scale;
+		
+		ctx.beginPath();
+		for(var i=0,x=0;x<width;i++,x+=scale) {
+			if (x==0) {
+				ctx.moveTo(x,path[i]);
+			}else {
+				ctx.lineTo(x,path[i]);
+			};
+		};
+		ctx.lineWidth=set.lineWidth*scale;
+		ctx.strokeStyle=linear;
+		ctx.stroke();
+	}
+};
+Recorder.WaveView=WaveView;
+
+	
+})();
+},{}],6:[function(_dereq_,module,exports){
+/*
 录音
 https://github.com/xiangyuecn/Recorder
 */
@@ -54723,7 +54880,7 @@ Recorder.Traffic=function(){
 };
 
 }));
-},{}],6:[function(_dereq_,module,exports){
+},{}],7:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -54789,7 +54946,7 @@ var ByteArray = exports.ByteArray = function () {
     return ByteArray;
 }();
 
-},{}],7:[function(_dereq_,module,exports){
+},{}],8:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -54819,7 +54976,7 @@ var Util = exports.Util = function () {
     return Util;
 }();
 
-},{}],8:[function(_dereq_,module,exports){
+},{}],9:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -54841,6 +54998,12 @@ var _hlsPlayer = _dereq_('./player/hls-player');
 var _httpflvTalker = _dereq_('./talker/httpflv-talker.js');
 
 var _ghelper = _dereq_('./helper/ghelper.js');
+
+var _record = _dereq_('./record');
+
+var _record2 = _interopRequireDefault(_record);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function createPlayer(url) {
   var config = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
@@ -54905,9 +55068,11 @@ gmediajs.createHelper = createHelper;
 gmediajs.GHelper = _ghelper.GHelper;
 gmediajs.GHelperEvent = _ghelperEvents.GHelperEvent;
 
+gmediajs.GRecord = _record2.default;
+
 exports.default = gmediajs;
 
-},{"./helper/ghelper-events.js":9,"./helper/ghelper.js":10,"./player/gplayer-events":12,"./player/gplayer.js":13,"./player/hls-player":14,"./player/httpflv-player.js":15,"./talker/gtalker-events":16,"./talker/httpflv-talker.js":18}],9:[function(_dereq_,module,exports){
+},{"./helper/ghelper-events.js":10,"./helper/ghelper.js":11,"./player/gplayer-events":13,"./player/gplayer.js":14,"./player/hls-player":15,"./player/httpflv-player.js":16,"./record":17,"./talker/gtalker-events":18,"./talker/httpflv-talker.js":20}],10:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -54918,7 +55083,7 @@ var GHelperEvent = exports.GHelperEvent = {
     HLS_USAGE: 'hls_usage'
 };
 
-},{}],10:[function(_dereq_,module,exports){
+},{}],11:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -55062,12 +55227,12 @@ var GHelper = exports.GHelper = function () {
     return GHelper;
 }();
 
-},{"./ghelper-events.js":9}],11:[function(_dereq_,module,exports){
+},{"./ghelper-events.js":10}],12:[function(_dereq_,module,exports){
 'use strict';
 
 module.exports = _dereq_('./gmedia.js').default;
 
-},{"./gmedia.js":8}],12:[function(_dereq_,module,exports){
+},{"./gmedia.js":9}],13:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -55094,7 +55259,7 @@ var GPlaybackControlStatus = exports.GPlaybackControlStatus = {
     SeekSuccess: 2
 };
 
-},{}],13:[function(_dereq_,module,exports){
+},{}],14:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -55156,7 +55321,7 @@ var GPlayer = exports.GPlayer = function () {
     return GPlayer;
 }();
 
-},{}],14:[function(_dereq_,module,exports){
+},{}],15:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -55490,7 +55655,7 @@ var HlsPlayer = exports.HlsPlayer = function (_GPlayer) {
     return HlsPlayer;
 }(_gplayer.GPlayer);
 
-},{"../helper/ghelper-events.js":9,"../helper/ghelper.js":10,"./gplayer-events.js":12,"./gplayer.js":13,"hls.js":2}],15:[function(_dereq_,module,exports){
+},{"../helper/ghelper-events.js":10,"../helper/ghelper.js":11,"./gplayer-events.js":13,"./gplayer.js":14,"hls.js":2}],16:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -55940,7 +56105,247 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
     return HttpFlvPlayer;
 }(_gplayer.GPlayer);
 
-},{"../helper/ghelper-events.js":9,"../helper/ghelper.js":10,"./gplayer-events.js":12,"./gplayer.js":13,"flv-g7.js":1}],16:[function(_dereq_,module,exports){
+},{"../helper/ghelper-events.js":10,"../helper/ghelper.js":11,"./gplayer-events.js":13,"./gplayer.js":14,"flv-g7.js":1}],17:[function(_dereq_,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _recorderCore = _dereq_('recorder-core');
+
+var _recorderCore2 = _interopRequireDefault(_recorderCore);
+
+_dereq_('recorder-core/src/engine/mp3');
+
+_dereq_('recorder-core/src/engine/mp3-engine');
+
+_dereq_('recorder-core/src/extensions/waveview');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var GRecord = function () {
+    function GRecord(_ref) {
+        var _ref$type = _ref.type,
+            type = _ref$type === undefined ? 'mp3' : _ref$type,
+            _ref$bitRate = _ref.bitRate,
+            bitRate = _ref$bitRate === undefined ? 16 : _ref$bitRate,
+            _ref$sampleRate = _ref.sampleRate,
+            sampleRate = _ref$sampleRate === undefined ? 8000 : _ref$sampleRate,
+            _ref$waveviewOption = _ref.waveviewOption,
+            waveviewOption = _ref$waveviewOption === undefined ? {} : _ref$waveviewOption,
+            _ref$limitDuration = _ref.limitDuration,
+            limitDuration = _ref$limitDuration === undefined ? 2 * 60 * 1000 : _ref$limitDuration,
+            _ref$onProcess = _ref.onProcess,
+            onProcess = _ref$onProcess === undefined ? function () {} : _ref$onProcess,
+            _ref$onStop = _ref.onStop,
+            onStop = _ref$onStop === undefined ? function () {} : _ref$onStop;
+
+        _classCallCheck(this, GRecord);
+
+        this.type = type;
+        this.bitRate = bitRate;
+        this.sampleRate = sampleRate;
+        this.recorder = null;
+        this.wave = null;
+        this.list = [];
+        this.waveviewOption = waveviewOption;
+        this.limitDuration = limitDuration;
+        this.onProcess = onProcess.bind(this);
+        this.onStop = onStop.bind(this);
+    }
+
+    /**
+     * 打开录音，弹出权限申请框，并初始化声波相关控制
+     * @param { fucntion } callback 
+     * @returns  Recorder 示例
+     */
+
+
+    _createClass(GRecord, [{
+        key: 'open',
+        value: function open(callback) {
+            var _this = this;
+
+            this.recorder = (0, _recorderCore2.default)({
+                type: this.type,
+                bitRate: this.bitRate,
+                sampleRate: this.sampleRate,
+                onProcess: function onProcess(buffers, powerLevel, duration, sampleRate) {
+                    if (_this.wave) {
+                        _this.wave.input(buffers[buffers.length - 1], powerLevel, sampleRate);
+                    }
+                    // 限制最大时长
+                    if (duration >= _this.limitDuration) {
+                        _this.stop(function (err, _ref2) {
+                            var blob = _ref2.blob,
+                                duration = _ref2.duration;
+
+                            if (!err) {
+                                _this.onStop({
+                                    blob: blob, duration: duration
+                                });
+                            }
+                        });
+                    }
+                    if (typeof _this.onProcess === 'function') {
+                        _this.onProcess(buffers, powerLevel, duration, sampleRate);
+                    }
+                }
+            });
+            this.recorder.open(function () {
+                if (_this.waveviewOption && _this.waveviewOption.elem) {
+                    _this.wave = _recorderCore2.default.WaveView({ elem: _this.waveviewOption.elem });
+                }
+                callback('', {
+                    type: _this.type,
+                    sampleRate: _this.sampleRate + 'hz',
+                    bitRate: _this.bitRate + 'kbps'
+                });
+            }, function (msg, isUserNotAllow) {
+                callback({
+                    code: 100004,
+                    msg: (isUserNotAllow ? 'UserNotAllow，' : '') + '\u6253\u5F00\u5931\u8D25\uFF1A' + msg
+                });
+            });
+            return this.recorder;
+        }
+    }, {
+        key: 'close',
+        value: function close(callback) {
+            if (this.recorder) {
+                this.recorder.close();
+                callback('');
+            } else {
+                callback({
+                    code: 100001,
+                    msg: '未打开录音'
+                });
+            }
+            this.recorder = null;
+        }
+    }, {
+        key: 'start',
+        value: function start(callback) {
+            if (!this.recorder || !_recorderCore2.default.IsOpen()) {
+                callback({
+                    code: 100001,
+                    msg: '未打开录音'
+                });
+                return;
+            }
+
+            this.recorder.start();
+            var set = this.recorder.set;
+            callback('', {
+                type: set.type,
+                sampleRate: set.sampleRate + 'hz',
+                bitRate: set.bitRate + 'kbps'
+            });
+        }
+    }, {
+        key: 'pause',
+        value: function pause(callback) {
+            if (this.recorder && _recorderCore2.default.IsOpen()) {
+                this.recorder.pause();
+                callback();
+            } else {
+                callback({
+                    code: 100001,
+                    msg: '未打开录音'
+                });
+            }
+        }
+    }, {
+        key: 'resume',
+        value: function resume(callback) {
+            if (this.recorder && _recorderCore2.default.IsOpen()) {
+                this.recorder.resume();
+                callback();
+            } else {
+                callback({
+                    code: 100001,
+                    msg: '未打开录音'
+                });
+            }
+        }
+    }, {
+        key: 'stop',
+        value: function stop(callback) {
+            var _this2 = this;
+
+            if (!(this.recorder && _recorderCore2.default.IsOpen())) {
+                callback({
+                    code: 100001,
+                    msg: '未打开录音'
+                });
+                return;
+            }
+            this.recorder.stop(function (blob, duration) {
+                _this2.list.splice(0, 0, {
+                    blob: blob,
+                    duration: duration,
+                    rec: _this2.recorder
+                });
+                callback('', {
+                    blob: blob,
+                    duration: duration,
+                    rec: _this2.recorder
+                });
+            }, function (msg) {
+                callback({
+                    code: 100002,
+                    msg: '\u5F55\u97F3\u5931\u8D25\uFF1A' + msg
+                });
+            });
+        }
+    }, {
+        key: 'down',
+        value: function down(data) {
+            var href = '';
+            var name = '';
+            if (typeof data === 'string') {
+                href = data;
+                name = '' + +new Date();
+            } else {
+                var blob = data.blob,
+                    duration = data.duration,
+                    _data$rec = data.rec,
+                    rec = _data$rec === undefined ? {} : _data$rec;
+
+                rec.set = rec.set || {};
+                name = 'rec-' + duration + 'ms-' + (rec.set.bitRate || '-') + 'kbps-' + (rec.set.sampleRate || '-') + 'hz.' + (rec.set.type || (/\w+$/.exec(blob.type) || [])[0] || 'unknown');
+                // eslint-disable-next-line no-undef
+                href = (window.URL || webkitURL).createObjectURL(blob);
+            }
+
+            var downA = document.createElement('a');
+            downA.href = href;
+            downA.download = name;
+            downA.click();
+        }
+    }, {
+        key: 'getList',
+        value: function getList() {
+            return this.getList;
+        }
+    }, {
+        key: 'clearList',
+        value: function clearList() {
+            this.getList = [];
+        }
+    }]);
+
+    return GRecord;
+}();
+
+exports.default = GRecord;
+
+},{"recorder-core":6,"recorder-core/src/engine/mp3":4,"recorder-core/src/engine/mp3-engine":3,"recorder-core/src/extensions/waveview":5}],18:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -55964,7 +56369,7 @@ var GTalkerConnectErrorType = exports.GTalkerConnectErrorType = {
     NotAllowOpenMicrophone: 'NotAllowOpenMicrophone'
 };
 
-},{}],17:[function(_dereq_,module,exports){
+},{}],19:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -56005,7 +56410,7 @@ var GTalker = exports.GTalker = function () {
     return GTalker;
 }();
 
-},{}],18:[function(_dereq_,module,exports){
+},{}],20:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -56382,7 +56787,7 @@ var HttpFlvTalker = exports.HttpFlvTalker = function (_GTalker) {
     return HttpFlvTalker;
 }(_gtalker.GTalker);
 
-},{"../common/bytearray.js":6,"../common/util.js":7,"./gtalker-events.js":16,"./gtalker.js":17,"flv-g7.js":1,"recorder-core":5,"recorder-core/src/engine/mp3":4,"recorder-core/src/engine/mp3-engine":3}]},{},[11])(11)
+},{"../common/bytearray.js":7,"../common/util.js":8,"./gtalker-events.js":18,"./gtalker.js":19,"flv-g7.js":1,"recorder-core":6,"recorder-core/src/engine/mp3":4,"recorder-core/src/engine/mp3-engine":3}]},{},[12])(12)
 });
 
 //# sourceMappingURL=gmedia.js.map

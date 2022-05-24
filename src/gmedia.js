@@ -6,6 +6,7 @@ import { HttpFlvPlayer } from './player/httpflv-player.js';
 import { HlsPlayer } from './player/hls-player';
 import { HttpFlvTalker } from './talker/httpflv-talker.js';
 import { GHelper } from "./helper/ghelper.js";
+import GRecord  from './record';
 
 function createPlayer(url, config = null) {
   let player = null;
@@ -66,5 +67,7 @@ gmediajs.GTalkerConnectErrorType = GTalkerConnectErrorType;
 gmediajs.createHelper = createHelper;
 gmediajs.GHelper = GHelper;
 gmediajs.GHelperEvent = GHelperEvent;
+
+gmediajs.GRecord = GRecord;
 
 export default gmediajs;
