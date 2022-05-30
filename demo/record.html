@@ -213,18 +213,22 @@ function recUpload() {
 		reclog('请先录音，然后再上传', 1);
 		return;
 	}
-	// 建议使用这种上传方式，multipart/form-data + formdata
-	const form = new FormData();
-	form.append('file', recBlob.blob, 'test-recorder.mp3');
-	service({
-		method: 'post',
-		url: '上传的url地址',
-		data: form,
-	}).then((data) => {
-		reclog(`上传成功！地址为：${data.data.data.ossUrl}`);
-	}).catch((e) => {
-		console.log(e);
-	});
+	const reader = new FileReader();
+	reader.onloadend = () => {
+		const postData = {
+			fileName: 'test-record.mp3',
+			content: (/.+;\s*base64\s*,\s*(.+)$/i.exec(reader.result)||[])[1],
+		};
+		
+		service({
+			method: 'post',
+			url: 'xxxx',
+			data: postData,
+		}).then((data) => {
+			reclog(`上传成功！地址为：${data.xxx}`);
+		});
+	};
+	reader.readAsDataURL(recBlob.blob);
 };
 
 
