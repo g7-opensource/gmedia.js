@@ -1868,6 +1868,11 @@ var Features = function () {
             return window.MediaSource && window.MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01E,mp4a.40.2"');
         }
     }, {
+        key: 'supportMSEH265Playback',
+        value: function supportMSEH265Playback() {
+            return window.MediaSource && window.MediaSource.isTypeSupported('video/mp4; codecs="hvc1.1.6.L93.B0"');
+        }
+    }, {
         key: 'supportNetworkStreamIO',
         value: function supportNetworkStreamIO() {
             var ioctl = new _ioController2.default({}, (0, _config.createDefaultConfig)());
@@ -1901,6 +1906,7 @@ var Features = function () {
                 networkStreamIO: false,
                 networkLoaderName: '',
                 nativeMP4H264Playback: false,
+                nativeMP4H265Playback: false,
                 nativeWebmVP8Playback: false,
                 nativeWebmVP9Playback: false
             };
@@ -1910,6 +1916,7 @@ var Features = function () {
             features.networkLoaderName = Features.getNetworkLoaderTypeName();
             features.mseLiveFlvPlayback = features.mseFlvPlayback && features.networkStreamIO;
             features.nativeMP4H264Playback = Features.supportNativeMediaPlayback('video/mp4; codecs="avc1.42001E, mp4a.40.2"');
+            features.nativeMP4H265Playback = Features.supportNativeMediaPlayback('video/mp4; codecs="hvc1.1.6.L93.B0"');
             features.nativeWebmVP8Playback = Features.supportNativeMediaPlayback('video/webm; codecs="vp8.0, vorbis"');
             features.nativeWebmVP9Playback = Features.supportNativeMediaPlayback('video/webm; codecs="vp9"');
 
@@ -1922,7 +1929,7 @@ var Features = function () {
 
 exports.default = Features;
 
-},{"../config.js":5,"../io/io-controller.js":23}],7:[function(_dereq_,module,exports){
+},{"../config.js":5,"../io/io-controller.js":24}],7:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2834,7 +2841,7 @@ var MSEController = function () {
                             }
                             this._isBufferFull = true;
                         } else {
-                            _logger2.default.e(this.TAG, error.message);
+                            _logger2.default.e(this.TAG, type, error.message);
                             this._emitter.emit(_mseEvents2.default.ERROR, { code: error.code, msg: error.message });
                         }
                     }
@@ -2882,13 +2889,13 @@ var MSEController = function () {
         key: '_hasPendingSegments',
         value: function _hasPendingSegments() {
             var ps = this._pendingSegments;
-            return ps.video.length > 0 || ps.audio.length > 0;
+            return (ps.video && ps.video.length) > 0 || ps.audio && ps.audio.length > 0;
         }
     }, {
         key: '_hasPendingRemoveRanges',
         value: function _hasPendingRemoveRanges() {
             var prr = this._pendingRemoveRanges;
-            return prr.video.length > 0 || prr.audio.length > 0;
+            return (prr.video && prr.video.length) > 0 || prr.audio && prr.audio.length > 0;
         }
     }, {
         key: '_onSourceBufferUpdateEnd',
@@ -2917,7 +2924,7 @@ var MSEController = function () {
 
 exports.default = MSEController;
 
-},{"../utils/browser.js":39,"../utils/exception.js":40,"../utils/logger.js":41,"./media-segment-info.js":8,"./mse-events.js":10,"events":2}],10:[function(_dereq_,module,exports){
+},{"../utils/browser.js":40,"../utils/exception.js":41,"../utils/logger.js":42,"./media-segment-info.js":8,"./mse-events.js":10,"events":2}],10:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -3298,7 +3305,7 @@ var Transmuxer = function () {
 
 exports.default = Transmuxer;
 
-},{"../utils/logger.js":41,"../utils/logging-control.js":42,"./media-info.js":7,"./transmuxing-controller.js":12,"./transmuxing-events.js":13,"./transmuxing-worker.js":14,"events":2,"webworkify":4}],12:[function(_dereq_,module,exports){
+},{"../utils/logger.js":42,"../utils/logging-control.js":43,"./media-info.js":7,"./transmuxing-controller.js":12,"./transmuxing-events.js":13,"./transmuxing-worker.js":14,"events":2,"webworkify":4}],12:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -3814,7 +3821,7 @@ var TransmuxingController = function () {
 
 exports.default = TransmuxingController;
 
-},{"../demux/demux-errors.js":16,"../demux/flv-demuxer.js":18,"../io/io-controller.js":23,"../io/loader.js":24,"../remux/mp4-remuxer.js":38,"../utils/browser.js":39,"../utils/logger.js":41,"./media-info.js":7,"./transmuxing-events.js":13,"events":2}],13:[function(_dereq_,module,exports){
+},{"../demux/demux-errors.js":16,"../demux/flv-demuxer.js":18,"../io/io-controller.js":24,"../io/loader.js":25,"../remux/mp4-remuxer.js":39,"../utils/browser.js":40,"../utils/logger.js":42,"./media-info.js":7,"./transmuxing-events.js":13,"events":2}],13:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -4082,7 +4089,7 @@ var TransmuxingWorker = function TransmuxingWorker(self) {
 
 exports.default = TransmuxingWorker;
 
-},{"../utils/logger.js":41,"../utils/logging-control.js":42,"../utils/polyfill.js":43,"./transmuxing-controller.js":12,"./transmuxing-events.js":13}],15:[function(_dereq_,module,exports){
+},{"../utils/logger.js":42,"../utils/logging-control.js":43,"../utils/polyfill.js":44,"./transmuxing-controller.js":12,"./transmuxing-events.js":13}],15:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -4372,7 +4379,7 @@ var AMF = function () {
 
 exports.default = AMF;
 
-},{"../utils/exception.js":40,"../utils/logger.js":41,"../utils/utf8-conv.js":44}],16:[function(_dereq_,module,exports){
+},{"../utils/exception.js":41,"../utils/logger.js":42,"../utils/utf8-conv.js":45}],16:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -4543,7 +4550,7 @@ var ExpGolomb = function () {
 
 exports.default = ExpGolomb;
 
-},{"../utils/exception.js":40}],18:[function(_dereq_,module,exports){
+},{"../utils/exception.js":41}],18:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -4581,6 +4588,10 @@ var _amfParser2 = _interopRequireDefault(_amfParser);
 var _spsParser = _dereq_('./sps-parser.js');
 
 var _spsParser2 = _interopRequireDefault(_spsParser);
+
+var _hevcSpsParser = _dereq_('./hevc-sps-parser.js');
+
+var _hevcSpsParser2 = _interopRequireDefault(_hevcSpsParser);
 
 var _demuxErrors = _dereq_('./demux-errors.js');
 
@@ -4940,7 +4951,7 @@ var FLVDemuxer = function () {
             var times = [];
             var filepositions = [];
 
-            // ignore first keyframe which is actually AVC Sequence Header (AVCDecoderConfigurationRecord)
+            // ignore first keyframe which is actually AVC/HVC Sequence Header (AVCDecoderConfigurationRecord or HVCDecoderConfigurationRecord)
             for (var i = 1; i < keyframes.times.length; i++) {
                 var time = this._timestampBase + Math.floor(keyframes.times[i] * 1000);
                 times.push(time);
@@ -5341,12 +5352,16 @@ var FLVDemuxer = function () {
             var frameType = (spec & 240) >>> 4;
             var codecId = spec & 15;
 
-            if (codecId !== 7) {
+            if (codecId !== 7 && codecId !== 12) {
                 this._onError(_demuxErrors2.default.CODEC_UNSUPPORTED, 'Flv: Unsupported codec in video frame: ' + codecId);
                 return;
             }
 
-            this._parseAVCVideoPacket(arrayBuffer, dataOffset + 1, dataSize - 1, tagTimestamp, tagPosition, frameType);
+            if (codecId === 7) {
+                this._parseAVCVideoPacket(arrayBuffer, dataOffset + 1, dataSize - 1, tagTimestamp, tagPosition, frameType);
+            } else if (codecId === 12) {
+                this._parseHVCVideoPacket(arrayBuffer, dataOffset + 1, dataSize - 1, tagTimestamp, tagPosition, frameType);
+            }
         }
     }, {
         key: '_parseAVCVideoPacket',
@@ -5606,6 +5621,284 @@ var FLVDemuxer = function () {
             }
         }
     }, {
+        key: '_parseHVCVideoPacket',
+        value: function _parseHVCVideoPacket(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType) {
+            if (dataSize < 4) {
+                _logger2.default.w(this.TAG, 'Flv: Invalid HVC packet, missing HVCPacketType or/and CompositionTime');
+                return;
+            }
+
+            var le = this._littleEndian;
+            var v = new DataView(arrayBuffer, dataOffset, dataSize);
+
+            var packetType = v.getUint8(0);
+            var cts_unsigned = v.getUint32(0, !le) & 0x00FFFFFF;
+            var cts = cts_unsigned << 8 >> 8; // convert to 24-bit signed int
+
+            if (packetType === 0) {
+                // HVCDecoderConfigurationRecord
+                this._parseHVCDecoderConfigurationRecord(arrayBuffer, dataOffset + 4, dataSize - 4);
+            } else if (packetType === 1) {
+                // One or more Nalus
+                this._parseHVCVideoData(arrayBuffer, dataOffset + 4, dataSize - 4, tagTimestamp, tagPosition, frameType, cts);
+            } else if (packetType === 2) {
+                // empty, HVC end of sequence
+            } else {
+                this._onError(_demuxErrors2.default.FORMAT_ERROR, 'Flv: Invalid video packet type ' + packetType);
+                return;
+            }
+        }
+    }, {
+        key: '_parseHVCDecoderConfigurationRecord',
+        value: function _parseHVCDecoderConfigurationRecord(arrayBuffer, dataOffset, dataSize) {
+            if (dataSize < 23) {
+                _logger2.default.w(this.TAG, 'Flv: Invalid HVCDecoderConfigurationRecord, lack of data!');
+                return;
+            }
+
+            var meta = this._videoMetadata;
+            var track = this._videoTrack;
+            var le = this._littleEndian;
+            var v = new DataView(arrayBuffer, dataOffset, dataSize);
+
+            if (!meta) {
+                if (this._hasVideo === false && this._hasVideoFlagOverrided === false) {
+                    this._hasVideo = true;
+                    this._mediaInfo.hasVideo = true;
+                }
+
+                meta = this._videoMetadata = {};
+                meta.type = 'video';
+                meta.id = track.id;
+                meta.timescale = this._timescale;
+                meta.duration = this._duration;
+            } else {
+                if (typeof meta.hvcc !== 'undefined') {
+                    _logger2.default.w(this.TAG, 'Found another HVCDecoderConfigurationRecord!');
+                }
+            }
+
+            var version = v.getUint8(0); // configurationVersion
+            var hvcProfile = v.getUint8(1) & 0x1F; // hvcProfileIndication
+            if (version !== 1 || hvcProfile === 0) {
+                this._onError(_demuxErrors2.default.FORMAT_ERROR, 'Flv: Invalid HVCDecoderConfigurationRecord');
+                return;
+            }
+
+            this._naluLengthSize = (v.getUint8(21) & 3) + 1; // lengthSizeMinusOne
+            if (this._naluLengthSize !== 3 && this._naluLengthSize !== 4) {
+                // holy shit!!!
+                this._onError(_demuxErrors2.default.FORMAT_ERROR, 'Flv: Strange NaluLengthSizeMinusOne: ' + (this._naluLengthSize - 1));
+                return;
+            }
+
+            var numOfArrays = v.getUint8(22);
+
+            var offset = 23;
+            var vpsCount = void 0,
+                spsCount = void 0,
+                ppsCount = void 0;
+            var spss = [];
+
+            for (var i = 0; i < numOfArrays; i++) {
+                var unitType = v.getUint8(offset++) & 0x3F;
+                var numNalus = v.getUint16(offset, !le);
+                offset += 2;
+
+                if (numNalus === 0) {
+                    continue;
+                }
+
+                switch (unitType) {
+                    case 32:
+                        vpsCount += numNalus;
+                        break;
+                    case 33:
+                        spsCount += numNalus;
+                        break;
+                    case 34:
+                        ppsCount += numNalus;
+                        break;
+                    default:
+                        break;
+                }
+
+                for (var j = 0; j < numNalus; j++) {
+                    var nauUnitLength = v.getUint16(offset, !le);
+                    offset += 2;
+
+                    if (nauUnitLength === 0) {
+                        continue;
+                    }
+
+                    if (unitType === 33) {
+                        // Notice: Nalu without startcode header (00 00 00 01)
+                        var _sps = new Uint8Array(arrayBuffer, dataOffset + offset, nauUnitLength);
+                        spss.push(_sps);
+                    }
+
+                    offset += nauUnitLength;
+                }
+            }
+
+            if (vpsCount === 0) {
+                this._onError(_demuxErrors2.default.FORMAT_ERROR, 'Flv: Invalid HVCDecoderConfigurationRecord: No VPS');
+                return;
+            } else if (vpsCount > 1) {
+                _logger2.default.w(this.TAG, 'Flv: Strange HVCDecoderConfigurationRecord: VPS Count = ' + vpsCount);
+            }
+
+            if (spsCount === 0) {
+                this._onError(_demuxErrors2.default.FORMAT_ERROR, 'Flv: Invalid HVCDecoderConfigurationRecord: No SPS');
+                return;
+            } else if (spsCount > 1) {
+                _logger2.default.w(this.TAG, 'Flv: Strange HVCDecoderConfigurationRecord: SPS Count = ' + spsCount);
+            }
+
+            if (ppsCount === 0) {
+                this._onError(_demuxErrors2.default.FORMAT_ERROR, 'Flv: Invalid HVCDecoderConfigurationRecord: No PPS');
+                return;
+            } else if (ppsCount > 1) {
+                _logger2.default.w(this.TAG, 'Flv: Strange HVCDecoderConfigurationRecord: PPS Count = ' + spsCount);
+            }
+
+            var sps = spss[0]; // ignore other sps's config
+            var config = _hevcSpsParser2.default.parseSPS(sps);
+            meta.codecWidth = config.codec_size.width;
+            meta.codecHeight = config.codec_size.height;
+            meta.presentWidth = config.present_size.width;
+            meta.presentHeight = config.present_size.height;
+
+            meta.profile = config.profile_string;
+            meta.level = config.level_string;
+            meta.profile_idc = config.profile_idc;
+            meta.level_idc = config.level_idc;
+            meta.bitDepth = config.bit_depth;
+            meta.chromaFormat = config.chroma_format;
+            meta.sarRatio = config.sar_ratio;
+            meta.frameRate = config.frame_rate;
+
+            if (config.frame_rate.fixed === false || config.frame_rate.fps_num === 0 || config.frame_rate.fps_den === 0) {
+                meta.frameRate = this._referenceFrameRate;
+            }
+
+            var fps_den = meta.frameRate.fps_den;
+            var fps_num = meta.frameRate.fps_num;
+            meta.refSampleDuration = meta.timescale * (fps_den / fps_num);
+
+            /**
+             * https://tools.axinom.com/capabilities/media
+             * 视频Profile
+             *
+             * Main: `hvc1.1.6.L93.B0`
+             * Main 10: `hvc1.2.4.L93.B0`
+             * Main still-picture: `hvc1.3.E.L93.B0`
+             * Range extensions: `hvc1.4.10.L93.B0`
+             */
+            var codecString = 'hvc1.' + meta.profile_idc + '.' + '1' + '.L' + meta.level_idc + '.B0';
+            meta.codec = codecString;
+
+            var mi = this._mediaInfo;
+            mi.width = meta.codecWidth;
+            mi.height = meta.codecHeight;
+            mi.fps = meta.frameRate.fps;
+            mi.profile = meta.profile;
+            mi.level = meta.level;
+            mi.refFrames = config.ref_frames;
+            mi.chromaFormat = config.chroma_format_string;
+            mi.sarNum = meta.sarRatio.width;
+            mi.sarDen = meta.sarRatio.height;
+            mi.videoCodec = codecString;
+
+            if (mi.hasAudio) {
+                if (mi.audioCodec != null) {
+                    mi.mimeType = 'video/x-flv; codecs="' + mi.videoCodec + ',' + mi.audioCodec + '"';
+                }
+            } else {
+                mi.mimeType = 'video/x-flv; codecs="' + mi.videoCodec + '"';
+            }
+            if (mi.isComplete()) {
+                this._onMediaInfo(mi);
+            }
+
+            meta.hvcc = new Uint8Array(dataSize);
+            meta.hvcc.set(new Uint8Array(arrayBuffer, dataOffset, dataSize), 0);
+            _logger2.default.v(this.TAG, 'Parsed HVCDecoderConfigurationRecord');
+
+            if (this._isInitialMetadataDispatched()) {
+                // flush parsed frames
+                if (this._dispatch && (this._audioTrack.length || this._videoTrack.length)) {
+                    this._onDataAvailable(this._audioTrack, this._videoTrack);
+                }
+            } else {
+                this._videoInitialMetadataDispatched = true;
+            }
+            // notify new metadata
+            this._dispatch = false;
+            this._onTrackMetadata('video', meta);
+        }
+    }, {
+        key: '_parseHVCVideoData',
+        value: function _parseHVCVideoData(arrayBuffer, dataOffset, dataSize, tagTimestamp, tagPosition, frameType, cts) {
+            var le = this._littleEndian;
+            var v = new DataView(arrayBuffer, dataOffset, dataSize);
+
+            var units = [],
+                length = 0;
+
+            var offset = 0;
+            var lengthSize = this._naluLengthSize;
+            var dts = this._timestampBase + tagTimestamp;
+            var keyframe = frameType === 1; // from FLV Frame Type constants
+
+            while (offset < dataSize) {
+                if (offset + 4 >= dataSize) {
+                    _logger2.default.w(this.TAG, 'Malformed Nalu near timestamp ' + dts + ', offset = ' + offset + ', dataSize = ' + dataSize);
+                    break; // data not enough for next Nalu
+                }
+                // Nalu with length-header (HVC1)
+                var naluSize = v.getUint32(offset, !le); // Big-Endian read
+                if (lengthSize === 3) {
+                    naluSize >>>= 8;
+                }
+                if (naluSize > dataSize - lengthSize) {
+                    _logger2.default.w(this.TAG, 'Malformed Nalus near timestamp ' + dts + ', NaluSize > DataSize!');
+                    return;
+                }
+
+                var unitType = v.getUint8(offset + lengthSize) >> 1 & 0x3F;
+
+                if (unitType >= 16 && unitType <= 23) {
+                    // IDR
+                    keyframe = true;
+                }
+
+                var data = new Uint8Array(arrayBuffer, dataOffset + offset, lengthSize + naluSize);
+                var unit = { type: unitType, data: data };
+                units.push(unit);
+                length += data.byteLength;
+
+                offset += lengthSize + naluSize;
+            }
+
+            if (units.length) {
+                var track = this._videoTrack;
+                var hvcSample = {
+                    units: units,
+                    length: length,
+                    isKeyframe: keyframe,
+                    dts: dts,
+                    cts: cts,
+                    pts: dts + cts
+                };
+                if (keyframe) {
+                    hvcSample.fileposition = tagPosition;
+                }
+                track.samples.push(hvcSample);
+                track.length += length;
+            }
+        }
+    }, {
         key: 'onTrackMetadata',
         get: function get() {
             return this._onTrackMetadata;
@@ -5720,6 +6013,10 @@ var FLVDemuxer = function () {
             var data = new Uint8Array(buffer);
             var mismatch = { match: false };
 
+            if (data.byteLength < 4) {
+                return mismatch;
+            }
+
             if (data[0] !== 0x46 || data[1] !== 0x4C || data[2] !== 0x56 || data[3] !== 0x01) {
                 return mismatch;
             }
@@ -5748,7 +6045,586 @@ var FLVDemuxer = function () {
 
 exports.default = FLVDemuxer;
 
-},{"../core/media-info.js":7,"../utils/exception.js":40,"../utils/logger.js":41,"./amf-parser.js":15,"./demux-errors.js":16,"./sps-parser.js":19}],19:[function(_dereq_,module,exports){
+},{"../core/media-info.js":7,"../utils/exception.js":41,"../utils/logger.js":42,"./amf-parser.js":15,"./demux-errors.js":16,"./hevc-sps-parser.js":19,"./sps-parser.js":20}],19:[function(_dereq_,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); /*
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * Copyright (C) 2016 Bilibili. All Rights Reserved.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * Copyright (C) 2022 Nanuns. All Rights Reserved.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * @author zheng qian <xqq@xqq.im>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * @author nanuns <support@nanuns.im>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      *
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * Licensed under the Apache License, Version 2.0 (the "License");
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * you may not use this file except in compliance with the License.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * You may obtain a copy of the License at
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      *
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      *     http://www.apache.org/licenses/LICENSE-2.0
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      *
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * Unless required by applicable law or agreed to in writing, software
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * distributed under the License is distributed on an "AS IS" BASIS,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * See the License for the specific language governing permissions and
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * limitations under the License.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      */
+
+var _expGolomb = _dereq_('./exp-golomb.js');
+
+var _expGolomb2 = _interopRequireDefault(_expGolomb);
+
+var _spsParser = _dereq_('./sps-parser.js');
+
+var _spsParser2 = _interopRequireDefault(_spsParser);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var HevcSPSParser = function () {
+    function HevcSPSParser() {
+        _classCallCheck(this, HevcSPSParser);
+    }
+
+    _createClass(HevcSPSParser, null, [{
+        key: 'parseSPS',
+        value: function parseSPS(uint8array) {
+            var rbsp = _spsParser2.default._ebsp2rbsp(uint8array);
+            var gb = new _expGolomb2.default(rbsp);
+            var hvcc = {};
+
+            gb.readBits(16); // nal_unit_header
+            gb.readBits(4); // sps_video_parameter_set_id
+            var max_sub_layers_minus1 = gb.readBits(3); // sps_max_sub_layers_minus1
+            gb.readBits(1); // sps_temporal_id_nesting_flag
+
+            HevcSPSParser._hvcc_parse_ptl(gb, hvcc, max_sub_layers_minus1);
+
+            gb.readUEG(); // seq_parameter_set_id
+
+            var separate_colour_plane_flag = 0;
+            var chroma_format = gb.readUEG(); // chroma_format_idc
+            if (chroma_format == 3) {
+                separate_colour_plane_flag = gb.readBits(1); // separate_colour_plane_flag
+            }
+
+            hvcc.sar_width = hvcc.sar_height = 1;
+            hvcc.conf_win_left_offset = hvcc.conf_win_right_offset = hvcc.conf_win_top_offset = hvcc.conf_win_bottom_offset = 0;
+            hvcc.def_disp_win_left_offset = hvcc.def_disp_win_right_offset = hvcc.def_disp_win_top_offset = hvcc.def_disp_win_bottom_offset = 0;
+
+            var pic_width_in_luma_samples = gb.readUEG(); // pic_width_in_luma_samples
+            var pic_height_in_luma_samples = gb.readUEG(); // pic_height_in_luma_samples
+
+            var left_offset = 0,
+                right_offset = 0,
+                top_offset = 0,
+                bottom_offset = 0;
+
+            var conformance_window_flag = gb.readBits(1);
+            if (conformance_window_flag) {
+                hvcc.conf_win_left_offset = gb.readUEG(); // conf_win_left_offset
+                hvcc.conf_win_right_offset = gb.readUEG(); // conf_win_right_offset
+                hvcc.conf_win_top_offset = gb.readUEG(); // conf_win_top_offset
+                hvcc.conf_win_bottom_offset = gb.readUEG(); // conf_win_bottom_offset
+
+                if (hvcc.default_display_window_flag === 1) {
+                    left_offset = hvcc.conf_win_left_offset + hvcc.def_disp_win_left_offset;
+                    right_offset = hvcc.conf_win_right_offset + hvcc.def_disp_win_right_offset;
+                    top_offset = hvcc.conf_win_top_offset + hvcc.def_disp_win_top_offset;
+                    bottom_offset = hvcc.conf_win_bottom_offset + hvcc.def_disp_win_bottom_offset;
+                }
+            }
+
+            var bit_depth = gb.readUEG() + 8; // bit_depth_luma_minus8
+            gb.readUEG(); // bit_depth_chroma_minus8
+            var log2_max_pic_order_cnt_lsb_minus4 = gb.readUEG();
+
+            /* sps_sub_layer_ordering_info_present_flag */
+            var i = gb.readBits(1) ? 0 : max_sub_layers_minus1;
+            for (; i <= max_sub_layers_minus1; i++) {
+                HevcSPSParser._skip_sub_layer_ordering_info(gb);
+            }
+
+            gb.readUEG(); // log2_min_luma_coding_block_size_minus3
+            gb.readUEG(); // log2_diff_max_min_luma_coding_block_size
+            gb.readUEG(); // log2_min_transform_block_size_minus2
+            gb.readUEG(); // log2_diff_max_min_transform_block_size
+            gb.readUEG(); // max_transform_hierarchy_depth_inter
+            gb.readUEG(); // max_transform_hierarchy_depth_intra
+
+            if (gb.readBits(1) && // scaling_list_enabled_flag
+            gb.readBits(1)) {
+                // sps_scaling_list_data_present_flag
+                HevcSPSParser._skip_scaling_list_data(gb);
+            }
+
+            gb.readBits(1); // amp_enabled_flag
+            gb.readBits(1); // sample_adaptive_offset_enabled_flag
+
+            if (gb.readBits(1)) {
+                // pcm_enabled_flag
+                gb.readBits(4); // pcm_sample_bit_depth_luma_minus1
+                gb.readBits(4); // pcm_sample_bit_depth_chroma_minus1
+                gb.readUEG(); // log2_min_pcm_luma_coding_block_size_minus3
+                gb.readUEG(); // log2_diff_max_min_pcm_luma_coding_block_size
+                gb.readBits(1); // pcm_loop_filter_disabled_flag
+            }
+
+            var num_delta_pocs = [];
+            var num_short_term_ref_pic_sets = gb.readUEG();
+            for (i = 0; i < num_short_term_ref_pic_sets; i++) {
+                var ret = HevcSPSParser._parse_rps(gb, i, num_short_term_ref_pic_sets, num_delta_pocs);
+                if (ret < 0) return ret;
+            }
+
+            if (gb.readBits(1)) {
+                // long_term_ref_pics_present_flag
+                var num_long_term_ref_pics_sps = gb.readUEG();
+                for (i = 0; i < num_long_term_ref_pics_sps; i++) {
+                    // num_long_term_ref_pics_sps
+                    var len = Math.min(log2_max_pic_order_cnt_lsb_minus4 + 4, 16);
+
+                    // lt_ref_pic_poc_lsb_sps[i]
+                    if (len > 32) {
+                        var d = len / 32;
+                        var t = len % 32;
+                        for (var j = 0; j < d; j++) {
+                            gb.readBits(32);
+                        }
+                        gb.readBits(t);
+                    } else {
+                        gb.readBits(len);
+                    }
+
+                    gb.readBits(1); // used_by_curr_pic_lt_sps_flag[i]
+                }
+            }
+            var ref_frames = 1; // TODO
+
+            gb.readBits(1); // sps_temporal_mvp_enabled_flag
+            gb.readBits(1); // strong_intra_smoothing_enabled_flag
+
+            if (gb.readBits(1)) {
+                // vui_parameters_present_flag
+                HevcSPSParser._hvcc_parse_vui(gb, hvcc, max_sub_layers_minus1);
+            }
+
+            var profile_string = HevcSPSParser.getProfileString(hvcc.profile_idc);
+            var level_string = HevcSPSParser.getLevelString(hvcc.level_idc);
+
+            var sarScale = 1;
+            if (hvcc.sar_width !== 1 || hvcc.sar_height !== 1) {
+                sarScale = hvcc.sar_width / hvcc.sar_height;
+            }
+
+            var codec_width = pic_width_in_luma_samples,
+                codec_height = pic_height_in_luma_samples;
+
+            var sub_wc = (1 === chroma_format || 2 == chroma_format) && 0 === separate_colour_plane_flag ? 2 : 1;
+            var sub_hc = 1 === chroma_format && 0 === separate_colour_plane_flag ? 2 : 1;
+            codec_width -= sub_wc * (hvcc.conf_win_left_offset + hvcc.conf_win_right_offset);
+            codec_height -= sub_hc * (hvcc.conf_win_top_offset + hvcc.conf_win_bottom_offset);
+
+            var present_width = Math.ceil(codec_width * sarScale);
+
+            gb.destroy();
+            gb = null;
+
+            return {
+                profile_string: profile_string, // main, main10, rext, ...
+                level_string: level_string, // 3, 3.1, 4, 4.1, 5, 5.1, ...
+                profile_idc: hvcc.profile_idc, // 1, 2, 3, 4 ...
+                level_idc: hvcc.level_idc,
+                bit_depth: bit_depth, // 8bit, 10bit, ...
+                ref_frames: ref_frames,
+                chroma_format: chroma_format, // 4:2:0, 4:2:2, ...
+                chroma_format_string: HevcSPSParser.getChromaFormatString(chroma_format),
+
+                frame_rate: {
+                    fixed: hvcc.fps_fixed,
+                    fps: hvcc.fps,
+                    fps_den: hvcc.fps_den,
+                    fps_num: hvcc.fps_num
+                },
+
+                sar_ratio: {
+                    width: hvcc.sar_width,
+                    height: hvcc.sar_height
+                },
+
+                codec_size: {
+                    width: codec_width,
+                    height: codec_height
+                },
+
+                present_size: {
+                    width: present_width,
+                    height: codec_height
+                }
+            };
+        }
+    }, {
+        key: '_hvcc_parse_ptl',
+        value: function _hvcc_parse_ptl(gb, hvcc, max_sub_layers_minus1) {
+            gb.readBits(2); // profile_space
+            var tier_flag = gb.readBits(1);
+            var profile_idc = gb.readBits(5); // profile_idc
+
+            gb.readBits(32); // profile_compatibility_flags
+            gb.readBits(32); // constraint_indicator_flags
+            gb.readBits(16);
+            var level_idc = gb.readByte(); // level_idc
+
+            if (hvcc.tier_flag === undefined || hvcc.level_idc === undefined || hvcc.tier_flag < tier_flag) {
+                hvcc.level_idc = level_idc;
+            } else {
+                hvcc.level_idc = Math.max(hvcc.level_idc, level_idc);
+            }
+            hvcc.profile_idc = Math.max(hvcc.profile_idc === undefined ? 0 : hvcc.profile_idc, profile_idc);
+
+            var sub_layer_profile_present_flag = [];
+            var sub_layer_level_present_flag = [];
+            for (var i = 0; i < max_sub_layers_minus1; i++) {
+                sub_layer_profile_present_flag.push(gb.readBits(1));
+                sub_layer_level_present_flag.push(gb.readBits(1));
+            }
+
+            if (max_sub_layers_minus1 > 0) {
+                for (var _i = max_sub_layers_minus1; _i < 8; _i++) {
+                    gb.readBits(2); // reserved_zero_2bits[i]
+                }
+            }
+
+            for (var _i2 = 0; _i2 < max_sub_layers_minus1; _i2++) {
+                if (sub_layer_profile_present_flag[_i2]) {
+                    /*
+                     * sub_layer_profile_space[i]                     u(2)
+                     * sub_layer_tier_flag[i]                         u(1)
+                     * sub_layer_profile_idc[i]                       u(5)
+                     * sub_layer_profile_compatibility_flag[i][0..31] u(32)
+                     * sub_layer_progressive_source_flag[i]           u(1)
+                     * sub_layer_interlaced_source_flag[i]            u(1)
+                     * sub_layer_non_packed_constraint_flag[i]        u(1)
+                     * sub_layer_frame_only_constraint_flag[i]        u(1)
+                     * sub_layer_reserved_zero_44bits[i]              u(44)
+                     */
+                    gb.readBits(32);
+                    gb.readBits(32);
+                    gb.readBits(24);
+                }
+                if (sub_layer_level_present_flag[_i2]) {
+                    gb.readByte();
+                }
+            }
+        }
+    }, {
+        key: '_parse_rps',
+        value: function _parse_rps(gb, rps_idx, num_rps, num_delta_pocs) {
+            if (rps_idx && gb.readBits(1)) {
+                // inter_ref_pic_set_prediction_flag
+                /* this should only happen for slice headers, and this isn't one */
+                if (rps_idx >= num_rps) return -1;
+
+                gb.readBits(1); // delta_rps_sign
+                gb.readUEG(); // abs_delta_rps_minus1
+
+                num_delta_pocs[rps_idx] = 0;
+
+                for (var i = 0; i <= num_delta_pocs[rps_idx - 1]; i++) {
+                    var use_delta_flag = 0;
+                    var used_by_curr_pic_flag = gb.readBits(1);
+                    if (!used_by_curr_pic_flag) {
+                        use_delta_flag = gb.readBits(1);
+                    }
+                    if (used_by_curr_pic_flag || use_delta_flag) {
+                        num_delta_pocs[rps_idx]++;
+                    }
+                }
+            } else {
+                var num_negative_pics = gb.readUEG();
+                var num_positive_pics = gb.readUEG();
+
+                //if ((num_positive_pics + num_negative_pics) * 2 > gb.getBitsLeft())
+                //    return -1;
+
+                num_delta_pocs[rps_idx] = num_negative_pics + num_positive_pics;
+
+                for (var _i3 = 0; _i3 < num_negative_pics; _i3++) {
+                    gb.readUEG(); // delta_poc_s0_minus1[rps_idx]
+                    gb.readBits(1); // used_by_curr_pic_s0_flag[rps_idx]
+                }
+
+                for (var _i4 = 0; _i4 < num_positive_pics; _i4++) {
+                    gb.readUEG(); // delta_poc_s1_minus1[rps_idx]
+                    gb.readBits(1); // used_by_curr_pic_s1_flag[rps_idx]
+                }
+            }
+
+            return 0;
+        }
+    }, {
+        key: '_hvcc_parse_vui',
+        value: function _hvcc_parse_vui(gb, hvcc, max_sub_layers_minus1) {
+            if (gb.readBits(1)) {
+                // aspect_ratio_info_present_flag
+                if (gb.readByte() == 255) {
+                    // aspect_ratio_idc
+                    hvcc.sar_width = gb.readBits(16); // sar_width u(16)
+                    hvcc.sar_height = gb.readBits(16); // sar_height u(16)
+                }
+            }
+            if (gb.readBits(1)) {
+                // overscan_info_present_flag
+                gb.readBits(1); // overscan_appropriate_flag
+            }
+
+            if (gb.readBits(1)) {
+                // video_signal_type_present_flag
+                gb.readBits(4); // video_format u(3), video_full_range_flag u(1)
+
+                if (gb.readBits(1)) {
+                    // colour_description_present_flag
+                    /*
+                     * colour_primaries         u(8)
+                     * transfer_characteristics u(8)
+                     * matrix_coeffs            u(8)
+                     */
+                    gb.readBits(24);
+                }
+            }
+
+            if (gb.readBits(1)) {
+                // chroma_loc_info_present_flag
+                gb.readUEG(); // chroma_sample_loc_type_top_field
+                gb.readUEG(); // chroma_sample_loc_type_bottom_field
+            }
+
+            /*
+             * neutral_chroma_indication_flag u(1)
+             * field_seq_flag                 u(1)
+             * frame_field_info_present_flag  u(1)
+             */
+            gb.readBits(3);
+
+            hvcc.default_display_window_flag = gb.readBits(1); // default_display_window_flag
+            if (hvcc.default_display_window_flag) {
+                hvcc.def_disp_win_left_offset = gb.readUEG(); // def_disp_win_left_offset
+                hvcc.def_disp_win_right_offset = gb.readUEG(); // def_disp_win_right_offset
+                hvcc.def_disp_win_top_offset = gb.readUEG(); // def_disp_win_top_offset
+                hvcc.def_disp_win_bottom_offset = gb.readUEG(); // def_disp_win_bottom_offset
+            }
+
+            if (gb.readBits(1)) {
+                // vui_timing_info_present_flag
+                HevcSPSParser._skip_timing_info(gb, hvcc);
+
+                if (gb.readBits(1)) {
+                    // vui_hrd_parameters_present_flag
+                    HevcSPSParser._skip_hrd_parameters(gb, hvcc, 1, max_sub_layers_minus1);
+                }
+            }
+
+            if (gb.readBits(1)) {
+                // bitstream_restriction_flag
+                /*
+                 * tiles_fixed_structure_flag              u(1)
+                 * motion_vectors_over_pic_boundaries_flag u(1)
+                 * restricted_ref_pic_lists_flag           u(1)
+                 */
+                gb.readBits(3);
+
+                gb.readUEG(); // min_spatial_segmentation_idc
+                gb.readUEG(); // max_bytes_per_pic_denom
+                gb.readUEG(); // max_bits_per_min_cu_denom
+                gb.readUEG(); // log2_max_mv_length_horizontal
+                gb.readUEG(); // log2_max_mv_length_vertical
+            }
+        }
+    }, {
+        key: '_skip_sub_layer_ordering_info',
+        value: function _skip_sub_layer_ordering_info(gb, hvcc) {
+            gb.readUEG(); // max_dec_pic_buffering_minus1
+            gb.readUEG(); // max_num_reorder_pics
+            gb.readUEG(); // max_latency_increase_plus1
+        }
+    }, {
+        key: '_skip_scaling_list_data',
+        value: function _skip_scaling_list_data(gb) {
+            for (var i = 0; i < 4; i++) {
+                for (var j = 0; j < (i == 3 ? 2 : 6); j++) {
+                    if (!gb.readBits(1)) {
+                        // scaling_list_pred_mode_flag[i][j]
+                        gb.readUEG(); // scaling_list_pred_matrix_id_delta[i][j]
+                    } else {
+                        var num_coeffs = Math.min(64, 1 << 4 + (i << 1));
+
+                        if (i > 1) {
+                            gb.readSEG(); // scaling_list_dc_coef_minus8[i-2][j]
+                        }
+                        for (var k = 0; k < num_coeffs; k++) {
+                            gb.readSEG(); // scaling_list_delta_coef
+                        }
+                    }
+                }
+            }
+        }
+    }, {
+        key: '_skip_sub_layer_hrd_parameters',
+        value: function _skip_sub_layer_hrd_parameters(gb, cpb_cnt_minus1, sub_pic_hrd_params_present_flag) {
+            for (var i = 0; i <= cpb_cnt_minus1; i++) {
+                gb.readUEG(); // bit_rate_value_minus1
+                gb.readUEG(); // cpb_size_value_minus1
+
+                if (sub_pic_hrd_params_present_flag) {
+                    gb.readUEG(); // cpb_size_du_value_minus1
+                    gb.readUEG(); // bit_rate_du_value_minus1
+                }
+
+                gb.readBits(1); // cbr_flag
+            }
+        }
+    }, {
+        key: '_skip_timing_info',
+        value: function _skip_timing_info(gb, hvcc) {
+            hvcc.fps_den = gb.readBits(32); // num_units_in_tick
+            hvcc.fps_num = gb.readBits(32); // time_scale
+            if (hvcc.fps_den > 0) {
+                hvcc.fps = hvcc.fps_num / hvcc.fps_den;
+            }
+
+            var num_ticks_poc_diff_one_minus1 = 0;
+            if (gb.readBits(1)) {
+                // poc_proportional_to_timing_flag
+                num_ticks_poc_diff_one_minus1 = gb.readUEG(); // num_ticks_poc_diff_one_minus1
+                if (num_ticks_poc_diff_one_minus1 >= 0) {
+                    hvcc.fps /= num_ticks_poc_diff_one_minus1 + 1;
+                }
+            }
+        }
+    }, {
+        key: '_skip_hrd_parameters',
+        value: function _skip_hrd_parameters(gb, cprms_present_flag, max_sub_layers_minus1) {
+            var sub_pic_hrd_params_present_flag = 0;
+            var nal_hrd_parameters_present_flag = 0;
+            var vcl_hrd_parameters_present_flag = 0;
+
+            if (cprms_present_flag) {
+                nal_hrd_parameters_present_flag = gb.readBits(1);
+                vcl_hrd_parameters_present_flag = gb.readBits(1);
+
+                if (nal_hrd_parameters_present_flag || vcl_hrd_parameters_present_flag) {
+                    var _sub_pic_hrd_params_present_flag = gb.readBits(1);
+
+                    if (_sub_pic_hrd_params_present_flag) {
+                        /*
+                         * tick_divisor_minus2                          u(8)
+                         * du_cpb_removal_delay_increment_length_minus1 u(5)
+                         * sub_pic_cpb_params_in_pic_timing_sei_flag    u(1)
+                         * dpb_output_delay_du_length_minus1            u(5)
+                         */
+                        gb.readBits(19);
+                    }
+
+                    /*
+                     * bit_rate_scale u(4)
+                     * cpb_size_scale u(4)
+                     */
+                    gb.readByte();
+
+                    if (_sub_pic_hrd_params_present_flag) {
+                        gb.readBits(4); // cpb_size_du_scale
+                    }
+
+                    /*
+                     * initial_cpb_removal_delay_length_minus1 u(5)
+                     * au_cpb_removal_delay_length_minus1      u(5)
+                     * dpb_output_delay_length_minus1          u(5)
+                     */
+                    gb.readBits(15);
+                }
+            }
+
+            for (var i = 0; i <= max_sub_layers_minus1; i++) {
+                var cpb_cnt_minus1 = 0;
+                var low_delay_hrd_flag = 0;
+                var fixed_pic_rate_within_cvs_flag = 0;
+                var fixed_pic_rate_general_flag = gb.readBits(1);
+
+                //hvcc.fps_fixed = fixed_pic_rate_general_flag;
+
+                if (!fixed_pic_rate_general_flag) {
+                    fixed_pic_rate_within_cvs_flag = gb.readBits(1);
+                }
+
+                if (fixed_pic_rate_within_cvs_flag) {
+                    gb.readUEG(); // elemental_duration_in_tc_minus1
+                } else {
+                    low_delay_hrd_flag = gb.readBits(1);
+                }
+
+                if (!low_delay_hrd_flag) {
+                    cpb_cnt_minus1 = gb.readUEG(gb);
+                }
+
+                if (nal_hrd_parameters_present_flag) {
+                    HevcSPSParser._skip_sub_layer_hrd_parameters(gb, cpb_cnt_minus1, sub_pic_hrd_params_present_flag);
+                }
+
+                if (vcl_hrd_parameters_present_flag) {
+                    HevcSPSParser._skip_sub_layer_hrd_parameters(gb, cpb_cnt_minus1, sub_pic_hrd_params_present_flag);
+                }
+            }
+        }
+    }, {
+        key: 'getProfileString',
+        value: function getProfileString(profile_idc) {
+            switch (profile_idc) {
+                case 1:
+                    return 'Main';
+                case 2:
+                    return 'Main10';
+                case 3:
+                    return 'MainSP'; // MainStillPictrue
+                case 4:
+                    return 'Rext';
+                case 9:
+                    return 'SCC';
+                default:
+                    return 'Unknown';
+            }
+        }
+    }, {
+        key: 'getLevelString',
+        value: function getLevelString(level_idc) {
+            return (level_idc / 30).toFixed(1);
+        }
+    }, {
+        key: 'getChromaFormatString',
+        value: function getChromaFormatString(chroma) {
+            switch (chroma) {
+                case 0:
+                    return '4:0:0';
+                case 1:
+                    return '4:2:0';
+                case 2:
+                    return '4:2:2';
+                case 3:
+                    return '4:4:4';
+                default:
+                    return 'Unknown';
+            }
+        }
+    }]);
+
+    return HevcSPSParser;
+}();
+
+exports.default = HevcSPSParser;
+
+},{"./exp-golomb.js":17,"./sps-parser.js":20}],20:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -5815,7 +6691,7 @@ var SPSParser = function () {
 
             gb.readByte();
             var profile_idc = gb.readByte(); // profile_idc
-            gb.readByte(); // constraint_set_flags[5] + reserved_zero[3]
+            gb.readByte(); // constraint_set_flags[6] + reserved_zero[2]
             var level_idc = gb.readByte(); // level_idc
             gb.readUEG(); // seq_parameter_set_id
 
@@ -6066,7 +6942,7 @@ var SPSParser = function () {
 
 exports.default = SPSParser;
 
-},{"./exp-golomb.js":17}],20:[function(_dereq_,module,exports){
+},{"./exp-golomb.js":17}],21:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -6179,13 +7055,13 @@ Object.defineProperty(flvjs, 'version', {
     enumerable: true,
     get: function get() {
         // replaced by browserify-versionify transform
-        return '1.8.1';
+        return '1.8.2';
     }
 });
 
 exports.default = flvjs;
 
-},{"./core/features.js":6,"./io/loader.js":24,"./player/flv-player.js":32,"./player/native-player.js":33,"./player/player-errors.js":34,"./player/player-events.js":35,"./utils/exception.js":40,"./utils/logging-control.js":42,"./utils/polyfill.js":43}],21:[function(_dereq_,module,exports){
+},{"./core/features.js":6,"./io/loader.js":25,"./player/flv-player.js":33,"./player/native-player.js":34,"./player/player-errors.js":35,"./player/player-events.js":36,"./utils/exception.js":41,"./utils/logging-control.js":43,"./utils/polyfill.js":44}],22:[function(_dereq_,module,exports){
 'use strict';
 
 // entry/index file
@@ -6193,7 +7069,7 @@ exports.default = flvjs;
 // make it compatible with browserify's umd wrapper
 module.exports = _dereq_('./flv.js').default;
 
-},{"./flv.js":20}],22:[function(_dereq_,module,exports){
+},{"./flv.js":21}],23:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -6491,7 +7367,7 @@ var FetchStreamLoader = function (_BaseLoader) {
 
 exports.default = FetchStreamLoader;
 
-},{"../utils/browser.js":39,"../utils/exception.js":40,"../utils/logger.js":41,"./loader.js":24}],23:[function(_dereq_,module,exports){
+},{"../utils/browser.js":40,"../utils/exception.js":41,"../utils/logger.js":42,"./loader.js":25}],24:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -7229,7 +8105,7 @@ var IOController = function () {
 
 exports.default = IOController;
 
-},{"../utils/exception.js":40,"../utils/logger.js":41,"./fetch-stream-loader.js":22,"./loader.js":24,"./param-seek-handler.js":25,"./range-seek-handler.js":26,"./speed-sampler.js":27,"./websocket-loader.js":28,"./xhr-moz-chunked-loader.js":29,"./xhr-msstream-loader.js":30,"./xhr-range-loader.js":31}],24:[function(_dereq_,module,exports){
+},{"../utils/exception.js":41,"../utils/logger.js":42,"./fetch-stream-loader.js":23,"./loader.js":25,"./param-seek-handler.js":26,"./range-seek-handler.js":27,"./speed-sampler.js":28,"./websocket-loader.js":29,"./xhr-moz-chunked-loader.js":30,"./xhr-msstream-loader.js":31,"./xhr-range-loader.js":32}],25:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -7387,7 +8263,7 @@ var BaseLoader = exports.BaseLoader = function () {
     return BaseLoader;
 }();
 
-},{"../utils/exception.js":40}],25:[function(_dereq_,module,exports){
+},{"../utils/exception.js":41}],26:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -7490,7 +8366,7 @@ var ParamSeekHandler = function () {
 
 exports.default = ParamSeekHandler;
 
-},{}],26:[function(_dereq_,module,exports){
+},{}],27:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -7560,7 +8436,7 @@ var RangeSeekHandler = function () {
 
 exports.default = RangeSeekHandler;
 
-},{}],27:[function(_dereq_,module,exports){
+},{}],28:[function(_dereq_,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -7676,7 +8552,7 @@ var SpeedSampler = function () {
 
 exports.default = SpeedSampler;
 
-},{}],28:[function(_dereq_,module,exports){
+},{}],29:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -7871,7 +8747,7 @@ var WebSocketLoader = function (_BaseLoader) {
 
 exports.default = WebSocketLoader;
 
-},{"../utils/exception.js":40,"../utils/logger.js":41,"./loader.js":24}],29:[function(_dereq_,module,exports){
+},{"../utils/exception.js":41,"../utils/logger.js":42,"./loader.js":25}],30:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -8125,7 +9001,7 @@ var MozChunkedLoader = function (_BaseLoader) {
 
 exports.default = MozChunkedLoader;
 
-},{"../utils/exception.js":40,"../utils/logger.js":41,"./loader.js":24}],30:[function(_dereq_,module,exports){
+},{"../utils/exception.js":41,"../utils/logger.js":42,"./loader.js":25}],31:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -8484,7 +9360,7 @@ var MSStreamLoader = function (_BaseLoader) {
 
 exports.default = MSStreamLoader;
 
-},{"../utils/exception.js":40,"../utils/logger.js":41,"./loader.js":24}],31:[function(_dereq_,module,exports){
+},{"../utils/exception.js":41,"../utils/logger.js":42,"./loader.js":25}],32:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -8900,7 +9776,7 @@ var RangeLoader = function (_BaseLoader) {
 
 exports.default = RangeLoader;
 
-},{"../utils/exception.js":40,"../utils/logger.js":41,"./loader.js":24,"./speed-sampler.js":27}],32:[function(_dereq_,module,exports){
+},{"../utils/exception.js":41,"../utils/logger.js":42,"./loader.js":25,"./speed-sampler.js":28}],33:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9617,7 +10493,7 @@ var FlvPlayer = function () {
 
 exports.default = FlvPlayer;
 
-},{"../config.js":5,"../core/mse-controller.js":9,"../core/mse-events.js":10,"../core/transmuxer.js":11,"../core/transmuxing-events.js":13,"../utils/browser.js":39,"../utils/exception.js":40,"../utils/logger.js":41,"./player-errors.js":34,"./player-events.js":35,"events":2}],33:[function(_dereq_,module,exports){
+},{"../config.js":5,"../core/mse-controller.js":9,"../core/mse-events.js":10,"../core/transmuxer.js":11,"../core/transmuxing-events.js":13,"../utils/browser.js":40,"../utils/exception.js":41,"../utils/logger.js":42,"./player-errors.js":35,"./player-events.js":36,"events":2}],34:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9915,7 +10791,7 @@ var NativePlayer = function () {
 
 exports.default = NativePlayer;
 
-},{"../config.js":5,"../utils/exception.js":40,"./player-events.js":35,"events":2}],34:[function(_dereq_,module,exports){
+},{"../config.js":5,"../utils/exception.js":41,"./player-events.js":36,"events":2}],35:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9968,7 +10844,7 @@ var ErrorDetails = exports.ErrorDetails = {
     MEDIA_CODEC_UNSUPPORTED: _demuxErrors2.default.CODEC_UNSUPPORTED
 };
 
-},{"../demux/demux-errors.js":16,"../io/loader.js":24}],35:[function(_dereq_,module,exports){
+},{"../demux/demux-errors.js":16,"../io/loader.js":25}],36:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10004,7 +10880,7 @@ var PlayerEvents = {
 
 exports.default = PlayerEvents;
 
-},{}],36:[function(_dereq_,module,exports){
+},{}],37:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10079,7 +10955,7 @@ var AAC = function () {
 
 exports.default = AAC;
 
-},{}],37:[function(_dereq_,module,exports){
+},{}],38:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10119,6 +10995,7 @@ var MP4 = function () {
         key: 'init',
         value: function init() {
             MP4.types = {
+                hvc1: [], hvcC: [],
                 avc1: [], avcC: [], btrt: [], dinf: [],
                 dref: [], esds: [], ftyp: [], hdlr: [],
                 mdat: [], mdhd: [], mdia: [], mfhd: [],
@@ -10127,7 +11004,7 @@ var MP4 = function () {
                 stco: [], stsc: [], stsd: [], stsz: [],
                 stts: [], tfdt: [], tfhd: [], traf: [],
                 trak: [], trun: [], trex: [], tkhd: [],
-                vmhd: [], smhd: [], '.mp3': []
+                vmhd: [], smhd: [], pasp: [], '.mp3': []
             };
 
             for (var name in MP4.types) {
@@ -10392,7 +11269,11 @@ var MP4 = function () {
                 // else: aac -> mp4a
                 return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.mp4a(meta));
             } else {
-                return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.avc1(meta));
+                if (meta.codec.indexOf('avc1') >= 0) {
+                    return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.avc1(meta));
+                } else {
+                    return MP4.box(MP4.types.stsd, MP4.constants.STSD_PREFIX, MP4.hvc1(meta));
+                }
             }
         }
     }, {
@@ -10477,6 +11358,30 @@ var MP4 = function () {
             0xFF, 0xFF // pre_defined = -1
             ]);
             return MP4.box(MP4.types.avc1, data, MP4.box(MP4.types.avcC, avcc));
+        }
+    }, {
+        key: 'hvc1',
+        value: function hvc1(meta) {
+            var hvcc = meta.hvcc;
+            var width = meta.codecWidth,
+                height = meta.codecHeight;
+
+            var data = new Uint8Array([0x00, 0x00, 0x00, 0x00, // reserved(4)
+            0x00, 0x00, 0x00, 0x01, // reserved(2) + data_reference_index(2)
+            0x00, 0x00, 0x00, 0x00, // pre_defined(2) + reserved(2)
+            0x00, 0x00, 0x00, 0x00, // pre_defined: 3 * 4 bytes
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, width >>> 8 & 0xFF, // width: 2 bytes
+            width & 0xFF, height >>> 8 & 0xFF, // height: 2 bytes
+            height & 0xFF, 0x00, 0x48, 0x00, 0x00, // horizresolution: 4 bytes
+            0x00, 0x48, 0x00, 0x00, // vertresolution: 4 bytes
+            0x00, 0x00, 0x00, 0x00, // reserved: 4 bytes
+            0x00, 0x01, // frame_count
+            0x0A, // strlen
+            0x78, 0x71, 0x71, 0x2F, // compressorname: 32 bytes
+            0x66, 0x6C, 0x76, 0x2E, 0x6A, 0x73, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, // depth
+            0xFF, 0xFF // pre_defined = -1
+            ]);
+            return MP4.box(MP4.types.hvc1, data, MP4.box(MP4.types.hvcC, hvcc));
         }
 
         // Movie Extends box
@@ -10602,7 +11507,7 @@ MP4.init();
 
 exports.default = MP4;
 
-},{}],38:[function(_dereq_,module,exports){
+},{}],39:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -11378,7 +12283,7 @@ var MP4Remuxer = function () {
 
 exports.default = MP4Remuxer;
 
-},{"../core/media-segment-info.js":8,"../utils/browser.js":39,"../utils/exception.js":40,"../utils/logger.js":41,"./aac-silent.js":36,"./mp4-generator.js":37}],39:[function(_dereq_,module,exports){
+},{"../core/media-segment-info.js":8,"../utils/browser.js":40,"../utils/exception.js":41,"../utils/logger.js":42,"./aac-silent.js":37,"./mp4-generator.js":38}],40:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -11492,7 +12397,7 @@ detect();
 
 exports.default = Browser;
 
-},{}],40:[function(_dereq_,module,exports){
+},{}],41:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -11609,7 +12514,7 @@ var NotImplementedException = exports.NotImplementedException = function (_Runti
     return NotImplementedException;
 }(RuntimeException);
 
-},{}],41:[function(_dereq_,module,exports){
+},{}],42:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -11769,7 +12674,7 @@ Log.emitter = new _events2.default();
 
 exports.default = Log;
 
-},{"events":2}],42:[function(_dereq_,module,exports){
+},{"events":2}],43:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -11960,7 +12865,7 @@ LoggingControl.emitter = new _events2.default();
 
 exports.default = LoggingControl;
 
-},{"./logger.js":41,"events":2}],43:[function(_dereq_,module,exports){
+},{"./logger.js":42,"events":2}],44:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -12037,7 +12942,7 @@ Polyfill.install();
 
 exports.default = Polyfill;
 
-},{"es6-promise":1}],44:[function(_dereq_,module,exports){
+},{"es6-promise":1}],45:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -12126,7 +13031,7 @@ function decodeUTF8(uint8array) {
 
 exports.default = decodeUTF8;
 
-},{}]},{},[21])(21)
+},{}]},{},[22])(22)
 });
 
 
