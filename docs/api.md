@@ -400,6 +400,8 @@ helper.off(gmediajs.GHelperEvent.MEDIA_STATE);
 ```
 validType:那些字段有有效值，0:设备应答有效（包含state、desc、detail） 1:设备状态有效（包含connecting、acc、gsm、resting）
 
+time:时间戳，13位，精确到毫秒
+
 connecting: 设备与平台的网络连接状态 1 在线 0 离线
 
 acc:ACC状态-1 无此数据 0 ACC关 1 ACC开
