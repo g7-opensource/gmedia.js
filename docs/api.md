@@ -384,8 +384,26 @@ helper.off(gmediajs.GHelperEvent.MEDIA_STATE);
 
 ### gmediajs.GHelperEvent.MEDIA_STATE
 
-流媒体播放状态，回调数据为json结构，含state desc detail 三个属性，详情如下
-
+流媒体播放状态，回调数据为json结构:
+```json
+{
+    "validType":0,  
+    "time":0,
+    "state":0,
+    "desc":"",
+    "detail":"",
+    "acc":0,       
+    "connecting":0,
+    "gsm":0,        
+    "resting":0     
+}
+```
+validType:那些字段有有效值，0:设备应答有效（包含state、desc、detail） 1:设备状态有效（包含connecting、acc、gsm、resting）
+connecting: 设备与平台的网络连接状态 1 在线 0 离线
+acc:ACC状态-1 无此数据 0 ACC关 1 ACC开
+gsm:信号值，大于25为良好
+resting:设备工作状态 0 休眠 1 工作 -1 不存在
+state、desc、detail：
 |状态值state     |描述desc                         |详情detail                                                                  |
 | ---------------|---------------------------------|--------------------------------------------------------------------------- |
 |0               |等待设备回应                     |等待设备回应                                                                 |
