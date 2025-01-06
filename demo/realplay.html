@@ -14,7 +14,7 @@
             <div id="streamURL">
                 <div class="url-input">
                     <label for="idImei">imei:</label>
-                    <input id="idImei" type="text" value="131064266311078" />
+                    <input id="idImei" type="text" value="125013302691515" />
                     <label for="idChannel">channel:</label>
                     <input id="idChannel" type="text" value="1" />
                 </div>
@@ -46,6 +46,7 @@
             <button onclick="onBtSeekToNewesetTime()">跳转到最新时间</button>
         </div>
         <textarea name="idLogbox" class="logcatBox" rows="10" readonly></textarea>
+        <textarea name="idLogbox1" class="logcatBox" rows="2" readonly></textarea>
     </div>
 
     <script src="./util.js"></script>
@@ -91,21 +92,33 @@
                 let hlsUrl = json.data[0].hls_url;          
                 let url = document.getElementById('idIsHls').checked ? hlsUrl : flvUrl;
 
+                //测试用
+                document.getElementsByName('idLogbox1')[0].value = url;
+
                 player = gmediajs.createPlayer(url, {helpUrl: helpUrl});
                 player.on(gmediajs.GPlayerEvent.ERROR,(type, subtype, detail)=>{
                     log('error ' + type + ' ' + subtype + ' ' + detail);
                 });
                 player.on(gmediajs.GPlayerEvent.MEDIA_SOURCE_END,()=>{
                     log('media_source_end ');
+
+                    this.onBtLoad();
                 });
                 player.on(gmediajs.GPlayerEvent.STATISTICS_INFO,(info)=>{
                     let speed = Number(info.speed)
                     speed = Math.ceil(speed);
-                    log(speed+ 'kB/s');
+                    //log(speed+ 'kB/s');
                 });
                 player.on(gmediajs.GPlayerEvent.MEDIA_STATE,(info)=>{
-                    log(info.detail);
-                    showMediaState(info.desc + info.state.toString());
+                    if (info.validType == 1) {
+                        log(info.detail);
+                        showMediaState(info.desc + info.time.toString());
+                    }
+                    else if (info.validType == 2) {
+                        showMediaState("connecting:" + info.connecting + "acc:" + info.acc + "gsm:" + info.gsm + "resting:" + info.resting
+                            + "time:" + info.time.toString()
+                        );
+                    }
                 });
                 player.attachMediaElement(elVideo);
                 player.load();
@@ -167,7 +180,7 @@
             let strNew = "";
 
             let arrOld = elLabel.innerText.split(/[\r\n]/);
-            if (arrOld.length >= 3) {
+            if (arrOld.length >= 6) {
                 arrOld.splice(0,1);
             }
             for (let i=0; i<arrOld.length; ++i) {
