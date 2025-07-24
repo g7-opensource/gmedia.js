@@ -7,6 +7,8 @@ export class GHelper {
         this.url = "";
         this.sessionid = "";
         this.connect = null;
+        this.flag = true;
+        this.timerId = null;
     }
 
     init(url, sessionid = "") {
@@ -38,7 +40,14 @@ export class GHelper {
     }
 
     destroy() {
+        this.flag = false;
+        if (this.timerId) {
+            clearTimeout(this.timerId);
+            this.timerId = null;
+        }
+
         this.callMediaState = null;
+        this.callHlsUsage = null
 
         if (this.connect != null) {
             this.connect.close();
@@ -52,6 +61,10 @@ export class GHelper {
         if (this.sessionid != "") {
             this._sendConsumeHlsUsageCmd(this.sessionid);
         }
+
+        this.timerId = setTimeout(()=>{
+            this._sendUpdateTimeMediaStateCmd();
+        }, 20000);
     }
 
     _onConnectMessage(e) {
@@ -73,7 +86,8 @@ export class GHelper {
     }
 
     _onConnectClose() {
-        
+        this.connect = null;
+        this.destroy();
     }
 
     _onConnectError() {
@@ -90,6 +104,26 @@ export class GHelper {
         let msg = JSON.stringify(head);
 
         this.connect.send(msg);
+    }
+
+    _sendUpdateTimeMediaStateCmd() {
+        if (!this.flag) {
+            return;
+        }
+
+        let head = {}
+        head["cmd"] = "updatetime";
+        head["type"] = "mediastate";
+        head["id"] = "";
+        head["data"] = {};
+
+        let msg = JSON.stringify(head);
+
+        this.connect.send(msg);
+
+        this.timerId = setTimeout(()=>{
+            this._sendUpdateTimeMediaStateCmd();
+        }, 20000);
     }
 
     _sendConsumeNetSignalCmd() {

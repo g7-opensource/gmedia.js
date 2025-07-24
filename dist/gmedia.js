@@ -56012,6 +56012,8 @@ var GHelper = exports.GHelper = function () {
         this.url = "";
         this.sessionid = "";
         this.connect = null;
+        this.flag = true;
+        this.timerId = null;
     }
 
     _createClass(GHelper, [{
@@ -56048,7 +56050,14 @@ var GHelper = exports.GHelper = function () {
     }, {
         key: "destroy",
         value: function destroy() {
+            this.flag = false;
+            if (this.timerId) {
+                clearTimeout(this.timerId);
+                this.timerId = null;
+            }
+
             this.callMediaState = null;
+            this.callHlsUsage = null;
 
             if (this.connect != null) {
                 this.connect.close();
@@ -56058,11 +56067,17 @@ var GHelper = exports.GHelper = function () {
     }, {
         key: "_onConnectOpen",
         value: function _onConnectOpen() {
+            var _this = this;
+
             this._sendConsumeMediaStateCmd();
             this._sendConsumeNetSignalCmd();
             if (this.sessionid != "") {
                 this._sendConsumeHlsUsageCmd(this.sessionid);
             }
+
+            this.timerId = setTimeout(function () {
+                _this._sendUpdateTimeMediaStateCmd();
+            }, 20000);
         }
     }, {
         key: "_onConnectMessage",
@@ -56084,7 +56099,10 @@ var GHelper = exports.GHelper = function () {
         }
     }, {
         key: "_onConnectClose",
-        value: function _onConnectClose() {}
+        value: function _onConnectClose() {
+            this.connect = null;
+            this.destroy();
+        }
     }, {
         key: "_onConnectError",
         value: function _onConnectError() {}
@@ -56100,6 +56118,29 @@ var GHelper = exports.GHelper = function () {
             var msg = JSON.stringify(head);
 
             this.connect.send(msg);
+        }
+    }, {
+        key: "_sendUpdateTimeMediaStateCmd",
+        value: function _sendUpdateTimeMediaStateCmd() {
+            var _this2 = this;
+
+            if (!this.flag) {
+                return;
+            }
+
+            var head = {};
+            head["cmd"] = "updatetime";
+            head["type"] = "mediastate";
+            head["id"] = "";
+            head["data"] = {};
+
+            var msg = JSON.stringify(head);
+
+            this.connect.send(msg);
+
+            this.timerId = setTimeout(function () {
+                _this2._sendUpdateTimeMediaStateCmd();
+            }, 20000);
         }
     }, {
         key: "_sendConsumeNetSignalCmd",

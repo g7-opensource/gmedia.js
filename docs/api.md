@@ -398,7 +398,7 @@ helper.off(gmediajs.GHelperEvent.MEDIA_STATE);
     "resting":0     
 }
 ```
-validType:那些字段有有效值，0:设备应答有效（包含state、desc、detail） 1:设备状态有效（包含connecting、acc、gsm、resting）
+validType:那些字段有有效值，1:设备应答有效（包含state、desc、detail） 2:设备状态有效（包含connecting、acc、gsm、resting）
 
 time:时间戳，13位，精确到毫秒
 
