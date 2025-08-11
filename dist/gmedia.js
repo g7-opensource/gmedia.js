@@ -56260,6 +56260,9 @@ var GPlayer = exports.GPlayer = function () {
         key: 'setPlaySpeed',
         value: function setPlaySpeed(speed) {}
     }, {
+        key: 'setBufferSize',
+        value: function setBufferSize(bufferSize) {}
+    }, {
         key: 'destroy',
         value: function destroy() {}
     }]);
@@ -56819,6 +56822,14 @@ var HttpFlvPlayer = exports.HttpFlvPlayer = function (_GPlayer) {
                 return;
             }
             this.element.playbackRate = speed;
+        }
+    }, {
+        key: "setBufferSize",
+        value: function setBufferSize(bufferSize) {
+            if (this.player == null) {
+                return;
+            }
+            this.player.setBufferSize(bufferSize);
         }
     }, {
         key: "destroy",

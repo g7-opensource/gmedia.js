@@ -194,6 +194,13 @@ export class HttpFlvPlayer extends GPlayer {
         this.element.playbackRate = speed;
     }
 
+    setBufferSize(bufferSize) {
+        if (this.player == null) {
+            return;
+        }
+        this.player.setBufferSize(bufferSize);
+    }
+
     destroy() {
         if (this.helper != null) {
             this.helper.destroy();

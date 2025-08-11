@@ -49,6 +49,10 @@ export class GPlayer {
         
     }
 
+    setBufferSize(bufferSize) {
+        
+    }
+
     destroy() {
 
     }
