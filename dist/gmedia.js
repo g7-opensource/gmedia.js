@@ -3016,11 +3016,13 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var Transmuxer = function () {
-    function Transmuxer(mediaDataSource, config) {
+    function Transmuxer(mediaDataSource, config, mediaElement, bufferSize) {
         _classCallCheck(this, Transmuxer);
 
         this.TAG = 'Transmuxer';
         this._emitter = new _events2.default();
+        this._mediaElement = mediaElement;
+        this._bufferSize = bufferSize;
 
         if (config.enableWorker && typeof Worker !== 'undefined') {
             try {
@@ -3037,10 +3039,10 @@ var Transmuxer = function () {
             } catch (error) {
                 _logger2.default.e(this.TAG, 'Error while initialize transmuxing worker, fallback to inline transmuxing');
                 this._worker = null;
-                this._controller = new _transmuxingController2.default(mediaDataSource, config);
+                this._controller = new _transmuxingController2.default(mediaDataSource, config, mediaElement, bufferSize);
             }
         } else {
-            this._controller = new _transmuxingController2.default(mediaDataSource, config);
+            this._controller = new _transmuxingController2.default(mediaDataSource, config, mediaElement, bufferSize);
         }
 
         if (this._controller) {
@@ -3312,6 +3314,8 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); /*
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       * Copyright (C) 2016 Bilibili. All Rights Reserved.
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       *
@@ -3374,13 +3378,17 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 // Transmuxing (IO, Demuxing, Remuxing) controller, with multipart support
 var TransmuxingController = function () {
-    function TransmuxingController(mediaDataSource, config) {
+    function TransmuxingController(mediaDataSource, config, mediaElement, bufferSize) {
         _classCallCheck(this, TransmuxingController);
 
         this.TAG = 'TransmuxingController';
         this._emitter = new _events2.default();
 
         this._config = config;
+
+        this._mediaElement = mediaElement;
+
+        this._bufferSize = bufferSize;
 
         // treat single part media as multipart media, which has only one segment
         if (!mediaDataSource.segments) {
@@ -3606,7 +3614,24 @@ var TransmuxingController = function () {
                 consumed = this._demuxer.parseChunks(data, byteStart);
             } else if ((probeData = _flvDemuxer2.default.probe(data)).match) {
                 // Always create new FLVDemuxer
-                this._demuxer = new _flvDemuxer2.default(probeData, this._config);
+                var app = '';
+                if (this._mediaDataSource.url != null && this._mediaDataSource.url != '') {
+                    var url = this._mediaDataSource.url;
+                    if (url.indexOf('?') >= 0) {
+                        var params = url.substring(url.lastIndexOf('?') + 1);
+                        params.split('&').forEach(function (param) {
+                            var _param$split = param.split('='),
+                                _param$split2 = _slicedToArray(_param$split, 2),
+                                key = _param$split2[0],
+                                value = _param$split2[1];
+
+                            if (key === 'app') {
+                                app = value;
+                            }
+                        });
+                    }
+                }
+                this._demuxer = new _flvDemuxer2.default(probeData, this._config, this._mediaElement, this._bufferSize, app);
 
                 if (!this._remuxer) {
                     this._remuxer = new _mp4Remuxer2.default(this._config);
@@ -4619,13 +4644,37 @@ function ReadBig32(array, index) {
     return array[index] << 24 | array[index + 1] << 16 | array[index + 2] << 8 | array[index + 3];
 }
 
+/*模拟音频
+编码：AAC
+音频参数：采样率8000、每个样本16位、单声道
+长度：698字节（不带7字节ADTS头）
+时长：128
+内容：0（白噪声）
+*/
+var simulateAccLen = 698;
+var simulateAcc = new Uint8Array([0x01, 0x40, 0x42, 0x80, 0xa3, 0x7f, 0xf8, 0x85, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x2e, 0xff, 0xf1, 0x0a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5d, 0xf0, 0xe2, 0x14, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xb4, 0xbc]);
+
+var PLAYER_SPEED_SLOW_20 = 20;
+
+var PLAYER_SPEED_SLOW_10 = 10;
+
+var PLAYER_SPEED_FAST_5 = -5;
+
 var FLVDemuxer = function () {
-    function FLVDemuxer(probeData, config) {
+    function FLVDemuxer(probeData, config, mediaElement, bufferSize, app) {
         _classCallCheck(this, FLVDemuxer);
 
         this.TAG = 'FLVDemuxer';
 
         this._config = config;
+        this._mediaElement = mediaElement;
+        this._bufferSize = bufferSize;
+        this._app = app;
+        this._isSpeech = false;
+        if (this._app === 'g7-jt808-speech') {
+            this._isSpeech = true;
+        }
+        this._bNeedQuick = false;
 
         this._onError = null;
         this._onMediaInfo = null;
@@ -4681,6 +4730,11 @@ var FLVDemuxer = function () {
 
         this._videoTrack = { type: 'video', id: 1, sequenceNumber: 0, samples: [], length: 0 };
         this._audioTrack = { type: 'audio', id: 2, sequenceNumber: 0, samples: [], length: 0 };
+
+        this._lastVideoOrgTs = -1;
+        this._lastAudioOrgTs = -1;
+        this._lastVideoTs = -1;
+        this._lastAudioTs = -1;
 
         this._littleEndian = function () {
             var buf = new ArrayBuffer(2);
@@ -4815,13 +4869,75 @@ var FLVDemuxer = function () {
 
                 var dataOffset = offset + 11;
 
+                //获取延迟
+                var delay = 0;
+                if (this._mediaElement.buffered.length) {
+                    var end = this._mediaElement.buffered.end(0);
+                    delay = end - this._mediaElement.currentTime; // 时间差
+                }
+
                 switch (tagType) {
                     case 8:
                         // Audio
+                        //reset audio timestamp
+                        if (this._lastAudioOrgTs == -1) {
+                            this._lastAudioOrgTs = timestamp;
+                            this._lastAudioTs = timestamp;
+                        } else {
+                            var off = timestamp > this._lastAudioOrgTs ? timestamp - this._lastAudioOrgTs : 1;
+                            this._lastAudioTs = this._lastAudioTs + off;
+
+                            this._lastAudioOrgTs = timestamp;
+                            timestamp = this._lastAudioTs;
+                        }
+
+                        //语音对讲时根据延迟动态追赶
+                        if (this._isSpeech) {
+                            if (delay >= 3.7) {
+                                this._mediaElement.currentTime = this._mediaElement.buffered.end(0) - 0.9;
+                                this._bNeedQuick = false;
+                                this._mediaElement.playbackRate = 1;
+                            } else if (delay <= 0.9) {
+                                this._bNeedQuick = false;
+                                this._mediaElement.playbackRate = 1;
+                            } else if (this._bNeedQuick || delay > 1.5) {
+                                this._bNeedQuick = true;
+                                this._mediaElement.playbackRate = 1.2;
+                            }
+                        }
+
                         this._parseAudioData(chunk, dataOffset, dataSize, timestamp);
                         break;
                     case 9:
                         // Video
+                        //reset video timestamp
+                        if (this._lastVideoOrgTs == -1) {
+                            this._lastVideoOrgTs = timestamp;
+                            this._lastVideoTs = timestamp;
+                        } else {
+                            var _off = timestamp > this._lastVideoOrgTs ? timestamp - this._lastVideoOrgTs : 1;
+                            //根据延迟动态创建缓冲区
+                            if (this._bufferSize > 0) {
+                                if (delay < this._bufferSize * 2 / 3) {
+                                    _off = _off + PLAYER_SPEED_SLOW_20;
+                                } else if (delay < this._bufferSize) {
+                                    _off = _off + PLAYER_SPEED_SLOW_10;
+                                } else {
+                                    _off = _off + PLAYER_SPEED_FAST_5;
+                                }
+                            }
+                            this._lastVideoTs = this._lastVideoTs + _off;
+
+                            this._lastVideoOrgTs = timestamp;
+                            timestamp = this._lastVideoTs;
+                        }
+
+                        //累积慢播超过1.5秒后补偿音频，保持音画同步
+                        if (this._lastAudioTs > 0 && this._lastVideoTs - this._lastAudioTs > 1500) {
+                            //console.log('触发补偿，_lastVideoTs:' + this._lastVideoTs + '_lastAudioTs:' + this._lastAudioTs + '--' + delay);
+                            this._pushSeimulateAcc();
+                        }
+
                         if (this._onStreamTime != null) {
                             this._onStreamTime(timestamp);
                         }
@@ -4849,6 +4965,21 @@ var FLVDemuxer = function () {
             }
 
             return offset; // consumed bytes, just equals latest offset index
+        }
+    }, {
+        key: '_pushSeimulateAcc',
+        value: function _pushSeimulateAcc() {
+            if (this._lastAudioTs + 128 <= this._lastVideoTs) {
+                this._lastAudioTs = this._lastAudioTs + 128;
+
+                var track = this._audioTrack;
+                var dts = this._timestampBase + this._lastAudioTs;
+                var aacSample = { unit: simulateAcc, length: simulateAccLen, dts: dts, pts: dts };
+                track.samples.push(aacSample);
+                track.length += simulateAccLen;
+
+                this._pushSeimulateAcc();
+            }
         }
     }, {
         key: '_parseScriptData',
@@ -5215,18 +5346,28 @@ var FLVDemuxer = function () {
                 extensionSamplingIndex = samplingIndex;
             } else {
                 // for other browsers, e.g. chrome...
-                // Always use HE-AAC to make it easier to switch aac codec profile
-                audioObjectType = 5;
-                extensionSamplingIndex = samplingIndex;
-                config = new Array(4);
-
-                if (samplingIndex >= 6) {
-                    extensionSamplingIndex = samplingIndex - 3;
-                } else if (channelConfig === 1) {
-                    // Mono channel
+                // Safari historically has weaker HE‑AAC (SBR) support in MSE in some versions.
+                // Prefer AAC‑LC on Safari for compatibility.
+                var isSafari = userAgent.indexOf('safari') !== -1 && userAgent.indexOf('chrome') === -1 && userAgent.indexOf('chromium') === -1;
+                if (isSafari) {
+                    // Safari: prefer LC‑AAC for better compatibility
                     audioObjectType = 2;
                     config = new Array(2);
                     extensionSamplingIndex = samplingIndex;
+                } else {
+                    // other browsers: prefer HE‑AAC to allow SBR when applicable
+                    audioObjectType = 5;
+                    extensionSamplingIndex = samplingIndex;
+                    config = new Array(4);
+
+                    if (samplingIndex >= 6) {
+                        extensionSamplingIndex = samplingIndex - 3;
+                    } else if (channelConfig === 1) {
+                        // Mono channel
+                        audioObjectType = 2;
+                        config = new Array(2);
+                        extensionSamplingIndex = samplingIndex;
+                    }
                 }
             }
 
@@ -7055,7 +7196,7 @@ Object.defineProperty(flvjs, 'version', {
     enumerable: true,
     get: function get() {
         // replaced by browserify-versionify transform
-        return '1.8.2';
+        return '1.8.8';
     }
 });
 
@@ -9906,6 +10047,8 @@ var FlvPlayer = function () {
 
         this.callbackStreamTime = null;
         this._mediaSourceEndCallback = null;
+
+        this._bufferSize = 0;
     }
 
     _createClass(FlvPlayer, [{
@@ -10000,6 +10143,11 @@ var FlvPlayer = function () {
             }
         }
     }, {
+        key: 'setBufferSize',
+        value: function setBufferSize(bufferSize) {
+            this._bufferSize = bufferSize;
+        }
+    }, {
         key: 'detachMediaElement',
         value: function detachMediaElement() {
             if (this._mediaElement) {
@@ -10042,7 +10190,7 @@ var FlvPlayer = function () {
                 this._mediaElement.currentTime = 0;
             }
 
-            this._transmuxer = new _transmuxer2.default(this._mediaDataSource, this._config);
+            this._transmuxer = new _transmuxer2.default(this._mediaDataSource, this._config, this._mediaElement, this._bufferSize);
 
             this._transmuxer.on(_transmuxingEvents2.default.INIT_SEGMENT, function (type, is) {
                 _this3._msectl.appendInitSegment(is);
