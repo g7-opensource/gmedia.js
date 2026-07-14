@@ -56134,6 +56134,10 @@ var _hlsPlayer = _dereq_('./player/hls-player');
 
 var _httpflvTalker = _dereq_('./talker/httpflv-talker.js');
 
+var _websocketTalker = _dereq_('./talker/websocket-talker.js');
+
+var _talkerUtil = _dereq_('./talker/talker-util.js');
+
 var _ghelper = _dereq_('./helper/ghelper.js');
 
 var _record = _dereq_('./record');
@@ -56158,8 +56162,10 @@ function createPlayer(url) {
 function createTalker(downUrl, upUrl, imei, channel) {
   var config = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : null;
 
-  var talker = new _httpflvTalker.HttpFlvTalker();
-  if (!talker.init(downUrl, upUrl, imei, channel, config)) {
+  var talkInfo = (0, _talkerUtil.parseTalkUrl)(upUrl);
+  var talkIdentity = (0, _talkerUtil.resolveTalkIdentity)(talkInfo, imei, channel);
+  var talker = talkInfo && talkInfo.protocol === 'e' ? new _websocketTalker.WebSocketTalker() : new _httpflvTalker.HttpFlvTalker();
+  if (!talker.init(downUrl, upUrl, talkIdentity.imei, talkIdentity.channel, config)) {
     return null;
   }
   return talker;
@@ -56180,7 +56186,7 @@ function isHlsSupported() {
 }
 
 function isTalkSupported() {
-  return _httpflvTalker.HttpFlvTalker.isSupported();
+  return _httpflvTalker.HttpFlvTalker.isSupported() || _websocketTalker.WebSocketTalker.isSupported();
 }
 
 var gmediajs = {};
@@ -56197,6 +56203,7 @@ gmediajs.GPlaybackControlStatus = _gplayerEvents.GPlaybackControlStatus;
 gmediajs.createTalker = createTalker;
 gmediajs.isTalkSupported = isTalkSupported;
 gmediajs.HttpFlvTalker = _httpflvTalker.HttpFlvTalker;
+gmediajs.WebSocketTalker = _websocketTalker.WebSocketTalker;
 gmediajs.GTalkerEvent = _gtalkerEvents.GTalkerEvent;
 gmediajs.GTalkerConnectStatus = _gtalkerEvents.GTalkerConnectStatus;
 gmediajs.GTalkerConnectErrorType = _gtalkerEvents.GTalkerConnectErrorType;
@@ -56209,7 +56216,7 @@ gmediajs.GRecord = _record2.default;
 
 exports.default = gmediajs;
 
-},{"./helper/ghelper-events.js":10,"./helper/ghelper.js":11,"./player/gplayer-events":13,"./player/gplayer.js":14,"./player/hls-player":15,"./player/httpflv-player.js":16,"./record":17,"./talker/gtalker-events":18,"./talker/httpflv-talker.js":20}],10:[function(_dereq_,module,exports){
+},{"./helper/ghelper-events.js":10,"./helper/ghelper.js":11,"./player/gplayer-events":13,"./player/gplayer.js":14,"./player/hls-player":15,"./player/httpflv-player.js":16,"./record":17,"./talker/gtalker-events":18,"./talker/httpflv-talker.js":20,"./talker/talker-util.js":21,"./talker/websocket-talker.js":22}],10:[function(_dereq_,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -57976,7 +57983,636 @@ var HttpFlvTalker = exports.HttpFlvTalker = function (_GTalker) {
     return HttpFlvTalker;
 }(_gtalker.GTalker);
 
-},{"../common/bytearray.js":7,"../common/util.js":8,"./gtalker-events.js":18,"./gtalker.js":19,"flv-g7.js":1,"recorder-core":6,"recorder-core/src/engine/mp3":4,"recorder-core/src/engine/mp3-engine":3}]},{},[12])(12)
+},{"../common/bytearray.js":7,"../common/util.js":8,"./gtalker-events.js":18,"./gtalker.js":19,"flv-g7.js":1,"recorder-core":6,"recorder-core/src/engine/mp3":4,"recorder-core/src/engine/mp3-engine":3}],21:[function(_dereq_,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.parseTalkUrl = parseTalkUrl;
+exports.int16ToUint8 = int16ToUint8;
+exports.resolveTalkIdentity = resolveTalkIdentity;
+exports.uint8ToInt16 = uint8ToInt16;
+exports.getESideAudioBytes = getESideAudioBytes;
+exports.createESidePacket = createESidePacket;
+var E_SIDE_HEADER_LENGTH = exports.E_SIDE_HEADER_LENGTH = 27;
+var E_SIDE_FRAME_HEADER = exports.E_SIDE_FRAME_HEADER = 0x30316364;
+
+function parseTalkUrl(url) {
+    if (!url) {
+        return null;
+    }
+
+    var urlSegments = String(url).split('/');
+    if (urlSegments.length === 0) {
+        return null;
+    }
+
+    var segment = urlSegments[urlSegments.length - 1];
+    if (!segment) {
+        return null;
+    }
+
+    var talkParts = segment.split('_');
+    if (talkParts.length !== 3 || !talkParts[0] || !talkParts[1] || !talkParts[2]) {
+        return null;
+    }
+
+    var protocol = talkParts[0].toLowerCase();
+    if (protocol !== 'e' && protocol !== 'g') {
+        return null;
+    }
+
+    return {
+        protocol: protocol,
+        imei: talkParts[1],
+        channel: talkParts[2]
+    };
+}
+
+function int16ToUint8(int16Array) {
+    return new Uint8Array(int16Array.buffer, int16Array.byteOffset, int16Array.byteLength);
+}
+
+function resolveTalkIdentity(talkInfo, imei, channel) {
+    return {
+        imei: talkInfo && talkInfo.imei,
+        channel: talkInfo && talkInfo.channel
+    };
+}
+
+function uint8ToInt16(uint8Array) {
+    var byteLength = uint8Array.byteLength - uint8Array.byteLength % 2;
+    if (uint8Array.byteOffset % 2 !== 0) {
+        var alignedBytes = new Uint8Array(byteLength);
+        alignedBytes.set(uint8Array.subarray(0, byteLength));
+        return new Int16Array(alignedBytes.buffer);
+    }
+
+    return new Int16Array(uint8Array.buffer, uint8Array.byteOffset, byteLength / 2);
+}
+
+function getESideAudioBytes(data) {
+    var bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+    if (bytes.byteLength <= E_SIDE_HEADER_LENGTH) {
+        return new Uint8Array(0);
+    }
+    return bytes.subarray(E_SIDE_HEADER_LENGTH);
+}
+
+function createESidePacket(_ref) {
+    var audioBytes = _ref.audioBytes,
+        sequence = _ref.sequence,
+        channel = _ref.channel,
+        timestamp = _ref.timestamp;
+
+    var body = audioBytes || new Uint8Array(0);
+    if (body.byteLength > 0xffff) {
+        throw new RangeError('E-side packet audio body length must be <= 65535 bytes');
+    }
+
+    var packet = new Uint8Array(E_SIDE_HEADER_LENGTH + body.byteLength);
+    var view = new DataView(packet.buffer, packet.byteOffset, packet.byteLength);
+    var time = Number(timestamp) || 0;
+    var timestampHigh = Math.floor(time / 0x100000000);
+    var timestampLow = time >>> 0;
+
+    view.setUint32(0, E_SIDE_FRAME_HEADER);
+    view.setUint16(4, sequence);
+    view.setUint8(12, channel);
+    view.setUint8(13, 0);
+    view.setUint8(14, 1);
+    view.setUint8(15, 0);
+    view.setUint8(16, 1);
+    view.setUint32(17, timestampHigh);
+    view.setUint32(21, timestampLow);
+    view.setUint16(25, body.byteLength);
+    packet.set(body, E_SIDE_HEADER_LENGTH);
+
+    return packet;
+}
+
+},{}],22:[function(_dereq_,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.WebSocketTalker = undefined;
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _gtalkerEvents = _dereq_("./gtalker-events.js");
+
+var _gtalker = _dereq_("./gtalker.js");
+
+var _bytearray = _dereq_("../common/bytearray.js");
+
+var _util = _dereq_("../common/util.js");
+
+var _talkerUtil = _dereq_("./talker-util.js");
+
+var _recorderCore = _dereq_("recorder-core");
+
+var _recorderCore2 = _interopRequireDefault(_recorderCore);
+
+_dereq_("recorder-core/src/engine/mp3");
+
+_dereq_("recorder-core/src/engine/mp3-engine");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var AudioBufLen = 640;
+var AudioSampleRate = 8000;
+var AudioQuickDelay = 1.5;
+var AudioDropDelay = 3;
+var AudioCacheMaxTime = 4;
+var DebugFlag = false;
+
+var WebSocketTalker = exports.WebSocketTalker = function (_GTalker) {
+    _inherits(WebSocketTalker, _GTalker);
+
+    function WebSocketTalker() {
+        _classCallCheck(this, WebSocketTalker);
+
+        var _this = _possibleConstructorReturn(this, (WebSocketTalker.__proto__ || Object.getPrototypeOf(WebSocketTalker)).call(this, 'websocket-talker'));
+
+        _this.TAG = 'WebSocketTalker';
+
+        _this.downUrl = null;
+        _this.upUrl = null;
+        _this.imei = null;
+        _this.channel = null;
+        _this.config = null;
+
+        _this.recorder = null;
+        _this.sender = null;
+        _this.element = null;
+        _this.audioContext = null;
+        _this.callbackConnectStatus = null;
+
+        _this.byteArray = new _bytearray.ByteArray();
+
+        _this.timerCheck = null;
+        _this.timerSend = null;
+        _this.timerReceive = null;
+
+        _this.hasReceiveServerData = false;
+        _this.hasSendClientData = false;
+        _this.hasConnectSuccess = false;
+        _this.hasConnectTerminalError = false;
+        _this.hasWaitOpenMicrophoneTimeout = false;
+        _this.hasDestory = false;
+        _this.sequence = 0;
+        _this.startTimestamp = 0;
+
+        _this.scheduleTime = 0;
+        _this.needQuick = false;
+        _this.cacheSource = [];
+        _this.cacheTime = 0;
+        return _this;
+    }
+
+    _createClass(WebSocketTalker, [{
+        key: "init",
+        value: function init(downUrl, upUrl, imei, channel, config) {
+            this.downUrl = downUrl;
+            this.upUrl = upUrl;
+            this.imei = imei;
+            this.channel = parseInt(channel, 10);
+            this.config = config || {};
+            return this._checkInputParam();
+        }
+    }, {
+        key: "on",
+        value: function on(event, call) {
+            if (event === _gtalkerEvents.GTalkerEvent.CONNECT_STATUS) {
+                this.callbackConnectStatus = call;
+            }
+        }
+    }, {
+        key: "off",
+        value: function off(event) {
+            if (event === _gtalkerEvents.GTalkerEvent.CONNECT_STATUS) {
+                this.callbackConnectStatus = null;
+            }
+        }
+    }, {
+        key: "attachMediaElement",
+        value: function attachMediaElement(element) {
+            this.element = element;
+        }
+    }, {
+        key: "load",
+        value: function load() {
+            this._startAudioContext();
+            this._startSender(this.upUrl);
+        }
+    }, {
+        key: "destroy",
+        value: function destroy() {
+            this.hasDestory = true;
+            this._destroyReceiveTimer();
+            this._destroySender();
+            this._destroyRecorder();
+            this._destroySendProc();
+            this._destroyAudioContext();
+            this.element = null;
+            this.callbackConnectStatus = null;
+        }
+    }, {
+        key: "_checkInputParam",
+        value: function _checkInputParam() {
+            if (_util.Util.isEmptyString(this.upUrl)) {
+                return false;
+            }
+            if (!isFinite(this.channel) || Math.floor(this.channel) !== this.channel || this.channel < 0 || this.channel > 255) {
+                return false;
+            }
+            return true;
+        }
+    }, {
+        key: "_startAudioContext",
+        value: function _startAudioContext() {
+            if (this.audioContext != null || typeof window === 'undefined') {
+                return;
+            }
+
+            var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) {
+                return;
+            }
+
+            try {
+                this.audioContext = new AudioContextClass({ sampleRate: AudioSampleRate });
+            } catch (e) {
+                this.audioContext = new AudioContextClass();
+            }
+
+            if (this.audioContext.resume) {
+                this.audioContext.resume();
+            }
+        }
+    }, {
+        key: "_startSender",
+        value: function _startSender(url) {
+            this._destroySender();
+            this.sender = new WebSocket(url);
+            this.sender.binaryType = 'arraybuffer';
+            this.sender.onopen = this._onSenderOpen.bind(this);
+            this.sender.onmessage = this._onSenderMsg.bind(this);
+            this.sender.onclose = this._onSenderClose.bind(this);
+            this.sender.onerror = this._onSenderError.bind(this);
+        }
+    }, {
+        key: "_onSenderOpen",
+        value: function _onSenderOpen() {
+            if (DebugFlag) {
+                console.log("websocket open");
+            }
+
+            this._startRecorder();
+            this._destroyReceiveTimer();
+            this.timerReceive = setTimeout(this._timeoutCheckIfReceiveAudio.bind(this), 10000);
+        }
+    }, {
+        key: "_onSenderMsg",
+        value: function _onSenderMsg(e) {
+            if (!(e.data instanceof ArrayBuffer)) {
+                return;
+            }
+
+            var audioBytes = (0, _talkerUtil.getESideAudioBytes)(e.data);
+            if (audioBytes.length === 0) {
+                return;
+            }
+
+            this.hasReceiveServerData = true;
+            this._destroyReceiveTimer();
+            this._notifyConnectSuccess();
+
+            this._onAudioSample((0, _talkerUtil.uint8ToInt16)(audioBytes));
+        }
+    }, {
+        key: "_onSenderClose",
+        value: function _onSenderClose(e) {
+            if (DebugFlag) {
+                console.log("websocket close", e);
+            }
+
+            if (this.hasReceiveServerData) {
+                this._notifyConnectError(_gtalkerEvents.GTalkerConnectErrorType.DeviceStopedResponding, true);
+            } else {
+                this._notifyConnectError(_gtalkerEvents.GTalkerConnectErrorType.UpLinkFail, true);
+            }
+        }
+    }, {
+        key: "_onSenderError",
+        value: function _onSenderError(e) {
+            if (DebugFlag) {
+                console.log("websocket error", e);
+            }
+        }
+    }, {
+        key: "_timeoutCheckIfReceiveAudio",
+        value: function _timeoutCheckIfReceiveAudio() {
+            if (this.hasReceiveServerData) {
+                return;
+            }
+
+            this._notifyConnectError(_gtalkerEvents.GTalkerConnectErrorType.DeviceNotResponding, true);
+        }
+    }, {
+        key: "_destroySender",
+        value: function _destroySender() {
+            if (this.sender != null) {
+                this.sender.onopen = null;
+                this.sender.onmessage = null;
+                this.sender.onclose = null;
+                this.sender.onerror = null;
+                try {
+                    this.sender.close();
+                } catch (e) {
+                    if (DebugFlag) {
+                        console.log("websocket close error", e);
+                    }
+                }
+                this.sender = null;
+            }
+        }
+    }, {
+        key: "_startRecorder",
+        value: function _startRecorder() {
+            if (this.recorder != null) {
+                this.recorder.close();
+            }
+
+            this.recorder = (0, _recorderCore2.default)({
+                type: "mp3",
+                sampleRate: AudioSampleRate,
+                bitRate: 16,
+                onProcess: this._onReceiveMicrophoneData.bind(this)
+            });
+            this.timerCheck = setTimeout(this._timeoutCheckIfAllowOpenMicrophone.bind(this), 10000);
+            this.recorder.open(this._onAllowOpenMicrophone.bind(this), this._onNotAllowOpenMicrophone.bind(this));
+        }
+    }, {
+        key: "_timeoutCheckIfAllowOpenMicrophone",
+        value: function _timeoutCheckIfAllowOpenMicrophone() {
+            if (DebugFlag) {
+                console.log("user WaitOpenMicrophone Timeout");
+            }
+
+            this.hasWaitOpenMicrophoneTimeout = true;
+            this._notifyConnectError(_gtalkerEvents.GTalkerConnectErrorType.WaitOpenMicrophoneTimeout, true);
+        }
+    }, {
+        key: "_onAllowOpenMicrophone",
+        value: function _onAllowOpenMicrophone() {
+            if (DebugFlag) {
+                console.log("user AllowOpenMicrophone");
+            }
+
+            if (this.hasWaitOpenMicrophoneTimeout) {
+                return;
+            }
+
+            clearTimeout(this.timerCheck);
+            this.timerCheck = null;
+
+            if (this.hasDestory || this.hasConnectTerminalError || this.recorder == null) {
+                return;
+            }
+
+            this.hasSendClientData = true;
+            this.startTimestamp = Date.now();
+            this.recorder.start();
+
+            if (!this.hasDestory) {
+                this._notifyConnectSuccess();
+                this._sendProc();
+            }
+        }
+    }, {
+        key: "_onNotAllowOpenMicrophone",
+        value: function _onNotAllowOpenMicrophone(msg, isUserNotAllow) {
+            if (DebugFlag) {
+                console.log("user NotAllowOpenMicrophone", msg, isUserNotAllow);
+            }
+
+            this._notifyConnectError(_gtalkerEvents.GTalkerConnectErrorType.NotAllowOpenMicrophone, true);
+        }
+    }, {
+        key: "_onReceiveMicrophoneData",
+        value: function _onReceiveMicrophoneData(buffers, powerLevel, bufferDuration, bufferSampleRate) {
+            if (buffers.length === 0) {
+                return;
+            }
+
+            this.byteArray.push((0, _talkerUtil.int16ToUint8)(buffers[buffers.length - 1]));
+        }
+    }, {
+        key: "_destroyRecorder",
+        value: function _destroyRecorder() {
+            if (this.recorder != null) {
+                try {
+                    this.recorder.close();
+                } catch (e) {
+                    if (DebugFlag) {
+                        console.log("recorder close error", e);
+                    }
+                }
+                this.recorder = null;
+            }
+            clearTimeout(this.timerCheck);
+            this.timerCheck = null;
+        }
+    }, {
+        key: "_sendProc",
+        value: function _sendProc() {
+            if (this.hasDestory || this.hasConnectTerminalError) {
+                return;
+            }
+
+            if (this.byteArray.length < AudioBufLen) {
+                this.timerSend = setTimeout(this._sendProc.bind(this), 5);
+                return;
+            }
+
+            var audioBuf = this.byteArray.readBytes(AudioBufLen);
+            var packet = (0, _talkerUtil.createESidePacket)({
+                audioBytes: audioBuf,
+                sequence: this.sequence,
+                channel: this.channel,
+                timestamp: Date.now() - this.startTimestamp
+            });
+            this.sequence = this.sequence + 1 & 0xffff;
+
+            if (this.sender != null && this.sender.readyState === WebSocket.OPEN) {
+                this.sender.send(packet);
+            }
+
+            this._sendProc();
+        }
+    }, {
+        key: "_destroySendProc",
+        value: function _destroySendProc() {
+            clearTimeout(this.timerSend);
+            this.timerSend = null;
+        }
+    }, {
+        key: "_destroyReceiveTimer",
+        value: function _destroyReceiveTimer() {
+            clearTimeout(this.timerReceive);
+            this.timerReceive = null;
+        }
+    }, {
+        key: "_notifyConnectError",
+        value: function _notifyConnectError(errorType, stopSession) {
+            if (this.hasDestory || this.hasConnectTerminalError) {
+                return;
+            }
+
+            this.hasConnectTerminalError = true;
+            this._destroyReceiveTimer();
+            clearTimeout(this.timerCheck);
+            this.timerCheck = null;
+
+            if (stopSession) {
+                this._destroySendProc();
+                this._destroyRecorder();
+                this._destroySender();
+            }
+
+            if (this.callbackConnectStatus != null) {
+                this.callbackConnectStatus(_gtalkerEvents.GTalkerConnectStatus.ConnectError, errorType);
+            }
+        }
+    }, {
+        key: "_notifyConnectSuccess",
+        value: function _notifyConnectSuccess() {
+            if (!this.hasReceiveServerData || !this.hasSendClientData || this.hasConnectSuccess || this.hasConnectTerminalError || this.hasDestory || this.callbackConnectStatus == null) {
+                return;
+            }
+
+            this.hasConnectSuccess = true;
+            this.callbackConnectStatus(_gtalkerEvents.GTalkerConnectStatus.ConnectSuccess, "");
+        }
+    }, {
+        key: "_onAudioSample",
+        value: function _onAudioSample(buffer) {
+            if (this.audioContext == null || buffer.length === 0) {
+                return;
+            }
+
+            var audioBufferObj = this.audioContext.createBuffer(1, buffer.length, this.audioContext.sampleRate);
+            var audioBuffer = audioBufferObj.getChannelData(0);
+            for (var i = 0; i < buffer.length; ++i) {
+                audioBuffer[i] = buffer[i] / 32768.0;
+            }
+
+            var audioSrc = this.audioContext.createBufferSource();
+            audioSrc.buffer = audioBufferObj;
+            audioSrc.connect(this.audioContext.destination);
+
+            var currentTime = this.audioContext.currentTime;
+            var duration = audioBufferObj.duration;
+            if (currentTime >= this.scheduleTime) {
+                this.scheduleTime = currentTime;
+                this.needQuick = false;
+            } else {
+                var delay = this.scheduleTime - currentTime;
+                if (delay >= AudioDropDelay) {
+                    this._clearCachedSources();
+                    this.scheduleTime = currentTime;
+                    this.needQuick = false;
+                } else if (this.needQuick || delay >= AudioQuickDelay) {
+                    this.needQuick = true;
+                    audioSrc.playbackRate.value = 1.2;
+                    duration = duration / 1.2;
+                }
+            }
+
+            this._playChunk(audioSrc, this.scheduleTime);
+            this.scheduleTime += duration;
+            this._cacheSource(audioSrc, duration);
+        }
+    }, {
+        key: "_playChunk",
+        value: function _playChunk(audioSrc, scheduleTime) {
+            if (audioSrc.start) {
+                audioSrc.start(scheduleTime);
+            } else {
+                audioSrc.noteOn(scheduleTime);
+            }
+        }
+    }, {
+        key: "_cacheSource",
+        value: function _cacheSource(audioSrc, duration) {
+            this.cacheSource.push({
+                source: audioSrc,
+                duration: duration
+            });
+            this.cacheTime += duration;
+
+            while (this.cacheTime > AudioCacheMaxTime && this.cacheSource.length > 0) {
+                var cached = this.cacheSource.shift();
+                this.cacheTime -= cached.duration;
+            }
+        }
+    }, {
+        key: "_clearCachedSources",
+        value: function _clearCachedSources() {
+            this.cacheSource.forEach(function (cached) {
+                var source = cached.source;
+                try {
+                    if (source.stop) {
+                        source.stop(0);
+                    } else {
+                        source.noteOff(0);
+                    }
+                } catch (e) {
+                    if (DebugFlag) {
+                        console.log("audio source stop error", e);
+                    }
+                }
+            });
+            this.cacheSource = [];
+            this.cacheTime = 0;
+        }
+    }, {
+        key: "_destroyAudioContext",
+        value: function _destroyAudioContext() {
+            this._clearCachedSources();
+            this.scheduleTime = 0;
+            this.needQuick = false;
+            if (this.audioContext != null && this.audioContext.close) {
+                this.audioContext.close();
+            }
+            this.audioContext = null;
+        }
+    }], [{
+        key: "isSupported",
+        value: function isSupported() {
+            if (typeof window === 'undefined') {
+                return false;
+            }
+
+            var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            return typeof WebSocket !== 'undefined' && _recorderCore2.default.Support() && !!AudioContextClass;
+        }
+    }]);
+
+    return WebSocketTalker;
+}(_gtalker.GTalker);
+
+},{"../common/bytearray.js":7,"../common/util.js":8,"./gtalker-events.js":18,"./gtalker.js":19,"./talker-util.js":21,"recorder-core":6,"recorder-core/src/engine/mp3":4,"recorder-core/src/engine/mp3-engine":3}]},{},[12])(12)
 });
 
 //# sourceMappingURL=gmedia.js.map

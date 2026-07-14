@@ -53,15 +53,18 @@ function isHttpFlvSupported(): boolean;
 
 ### gmediajs.createTalker()
 ```js
-function createTalker(downUrl:string, upUrl:string, imei:string, channel:string, config:Object): GTalker;
+function createTalker(downUrl:string, upUrl:string, imei:string|null, channel:string|null, config:Object): GTalker;
 ```
 
 参数:
     downUrl:平台推送设备音频到客户端的地址
     upUrl:客户端上传音频的地址
-    imei:设备的唯一编号
-    channel:设备通道号
+    imei:保留参数，当前内部不使用该参数，传 null 即可
+    channel:保留参数，当前内部不使用该参数，传 null 即可
     config:json对象，可不传，配置对讲器可选项
+
+协议选择规则：`createTalker` 的函数签名保持不变，`imei` 和 `channel` 仅为兼容旧调用方而保留。内部会解析 `upUrl` 最后一段流名称，并使用解析得到的 `imei` 和 `channel`。流名称按 `_` 拆为 `协议类型_imei_channel` 三段，例如 `e_133064013020458_1`。协议类型为 `e` 时使用 E 侧 websocket 双向语音对讲；协议类型为 `g` 或无法识别时保持原 G 侧对讲逻辑，即下行 http-flv、上行 websocket。
+
 返回值:
     GTalker对象，用于开始或结束语音对讲
 
@@ -261,6 +264,8 @@ talker.attachMediaElement(element);
     element:h5 audio标签对象
 返回值:
     无
+
+说明：G 侧对讲会使用传入的 audio 标签播放 http-flv 下行音频。E 侧对讲下行音频由 websocket 接收后通过 Web Audio API 播放，仍保留该方法用于接口兼容。
 
 ```js
 talker.load();

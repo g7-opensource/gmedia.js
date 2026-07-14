@@ -14,7 +14,7 @@
             <div id="streamURL">
                 <div class="url-input">
                     <label for="idImei">imei:</label>
-                    <input id="idImei" type="text" value="133064013020458" />
+                    <input id="idImei" type="text" value="131064281003560" />
                     <label for="idChannel">channel:</label>
                     <input id="idChannel" type="text" value="1" />
                 </div>
@@ -56,16 +56,16 @@
             let channel = document.getElementById('idChannel').value;
             getTalkUrl(imei,channel,(requestUrl,bOk, data)=>{
                 let json = {};
-                if (!bOk || (json = JSON.parse(data)).data.lenght == 0)
+                if (!bOk || (json = JSON.parse(data)).data.length == 0)
                 {
                     log("获取播放地址失败");
                 }
-                if (json.data[0].flv_url == null || json.data[0].wss == null)
+                if (json.data[0].speechUrl == null)
                 {
                     log("获取播放地址失败");
                 }
-                let downUrl = json.data[0].flv_url;
-                let upUrl =  json.data[0].wss;
+                let downUrl = json.data[0].speechUrl;
+                let upUrl =  json.data[0].speechUrl;
             
                 if (talker != null) {
                     talker.destroy();

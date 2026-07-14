@@ -5,6 +5,8 @@ import {GPlayer} from './player/gplayer.js';
 import { HttpFlvPlayer } from './player/httpflv-player.js';
 import { HlsPlayer } from './player/hls-player';
 import { HttpFlvTalker } from './talker/httpflv-talker.js';
+import { WebSocketTalker } from './talker/websocket-talker.js';
+import { parseTalkUrl, resolveTalkIdentity } from './talker/talker-util.js';
 import { GHelper } from "./helper/ghelper.js";
 import GRecord  from './record';
 
@@ -21,8 +23,10 @@ function createPlayer(url, config = null) {
 }
 
 function createTalker(downUrl, upUrl, imei, channel, config = null) {
-  let talker = new HttpFlvTalker();
-  if (!talker.init(downUrl, upUrl, imei, channel, config)) {
+  const talkInfo = parseTalkUrl(upUrl);
+  const talkIdentity = resolveTalkIdentity(talkInfo, imei, channel);
+  const talker = talkInfo && talkInfo.protocol === 'e' ? new WebSocketTalker() : new HttpFlvTalker();
+  if (!talker.init(downUrl, upUrl, talkIdentity.imei, talkIdentity.channel, config)) {
     return null;
   }
   return talker;
@@ -43,7 +47,7 @@ function isHlsSupported() {
 }
 
 function isTalkSupported() {
-  return HttpFlvTalker.isSupported();
+  return HttpFlvTalker.isSupported() || WebSocketTalker.isSupported();
 }
 
 let gmediajs = {};
@@ -60,6 +64,7 @@ gmediajs.GPlaybackControlStatus = GPlaybackControlStatus;
 gmediajs.createTalker = createTalker;
 gmediajs.isTalkSupported = isTalkSupported;
 gmediajs.HttpFlvTalker = HttpFlvTalker;
+gmediajs.WebSocketTalker = WebSocketTalker;
 gmediajs.GTalkerEvent = GTalkerEvent;
 gmediajs.GTalkerConnectStatus = GTalkerConnectStatus;
 gmediajs.GTalkerConnectErrorType = GTalkerConnectErrorType;
