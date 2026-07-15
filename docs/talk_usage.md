@@ -47,13 +47,10 @@ H5 应使用 [`gmedia.js`](https://github.com/g7-opensource/gmedia.js) 创建语
 
 ### 2.1 H5 框架图
 
-```mermaid
-flowchart LR
-    device[设备] <-->|语音数据| platform[平台]
-    platform -->|下行音频 websocket / speech_url| client[H5 客户端]
-    client -->|上行音频 websocket / speech_url| platform
-    audio[麦克风 / 扬声器] <-->|gmedia.js 采集 / 播放音频| client
-```
+| 设备 | 平台 | H5 客户端 |
+| --- | --- | --- |
+| 与平台建立语音通道。 | 下行音频：通过 `speech_url` websocket 发送到 H5。 | 使用 `gmedia.js` 接收并播放下行音频。 |
+| 接收平台转发的客户端语音。 | 上行音频：通过 `speech_url` websocket 接收 H5 上传音频并转发到设备。 | 使用 `gmedia.js` 连接麦克风 / 扬声器，采集并播放音频。 |
 
 ### 2.2 H5使用gmedia.js创建语音对讲关键步骤
 
@@ -100,14 +97,10 @@ gmediajs.createTalker(downUrl, upUrl, imei, channel, config)
 
 ### 3.1 微信小程序框架图
 
-```mermaid
-flowchart LR
-    device[设备] <-->|语音数据| platform[平台]
-    platform -->|下行音频 RTMP / rtm_url| client[微信小程序]
-    client -->|上行音频 websocket / ws_url| platform
-    mic[麦克风] -->|webAPI 录制音频| client
-    client -->|live-player 播放音频| speaker[扬声器]
-```
+| 设备 | 平台 | 微信小程序 |
+| --- | --- | --- |
+| 与平台建立语音通道。 | 下行音频：通过 `rtm_url` RTMP 发送到小程序。 | 使用 `live-player` 播放下行音频并连接扬声器。 |
+| 接收平台转发的客户端语音。 | 上行音频：通过 `ws_url` websocket 接收小程序上传音频并转发到设备。 | 使用 webAPI 录制麦克风音频，并按上行私有协议上传。 |
 
 ### 3.2 小程序整体流程
 
@@ -148,13 +141,10 @@ flowchart LR
 
 ### 4.1 APP 框架图
 
-```mermaid
-flowchart LR
-    device[设备] <-->|语音数据| platform[平台]
-    platform -->|下行音频 HTTP-FLV / http_flv<br/>或 RTMP / rtm_url| client[手机 APP]
-    client -->|上行音频 websocket / ws_url| platform
-    audio[麦克风 / 扬声器] <-->|自行开发或第三方库录制 / 播放音频| client
-```
+| 设备 | 平台 | 手机 APP |
+| --- | --- | --- |
+| 与平台建立语音通道。 | 下行音频：通过 `http_flv` HTTP-FLV 或 `rtm_url` RTMP 发送到 APP。 | 自行开发或引入第三方库播放下行音频并连接扬声器。 |
+| 接收平台转发的客户端语音。 | 上行音频：通过 `ws_url` websocket 接收 APP 上传音频并转发到设备。 | 自行开发或引入第三方库录制麦克风音频，并按上行私有协议上传。 |
 
 ### 4.2 APP 整体流程
 
